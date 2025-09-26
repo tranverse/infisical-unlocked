@@ -89,7 +89,9 @@ export type UpdateProjectDTO = {
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
-export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
+// export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
+export type UpdateAuditLogsRetentionDTO = { projectId: string; auditLogsRetentionDays: number };
+
 export type ToggleAutoCapitalizationDTO = { projectID: string; state: boolean };
 export type ToggleDeleteProjectProtectionDTO = { projectID: string; state: boolean };
 

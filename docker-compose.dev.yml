@@ -121,6 +121,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    ports:
+      - 3000:3000
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
@@ -128,6 +130,8 @@ services:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
     env_file: .env
+    environment:
+      - WATCHPACK_POLLING=true
 
   pgadmin:
     image: dpage/pgadmin4

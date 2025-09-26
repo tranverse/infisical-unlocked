@@ -9,9 +9,70 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TFeatureSet } from "./license-types";
 
+// export const getDefaultOnPremFeatures = (): TFeatureSet => ({
+//   _id: null,
+//   slug: null,
+//   tier: -1,
+//   workspaceLimit: null,
+//   workspacesUsed: 0,
+//   memberLimit: null,
+//   membersUsed: 0,
+//   environmentLimit: null,
+//   environmentsUsed: 0,
+//   identityLimit: null,
+//   identitiesUsed: 0,
+//   dynamicSecret: false,
+//   secretVersioning: true,
+//   pitRecovery: false,
+//   ipAllowlisting: false,
+//   rbac: false,
+//   githubOrgSync: false,
+//   customRateLimits: false,
+//   customAlerts: false,
+//   secretAccessInsights: false,
+//   auditLogs: false,
+//   auditLogsRetentionDays: 0,
+//   auditLogStreams: false,
+//   auditLogStreamLimit: 3,
+//   samlSSO: false,
+//   enforceGoogleSSO: false,
+//   hsm: false,
+//   oidcSSO: false,
+//   scim: false,
+//   ldap: false,
+//   groups: false,
+//   status: null,
+//   trial_end: null,
+//   has_used_trial: true,
+//   secretApproval: false,
+//   secretRotation: false,
+//   caCrl: false,
+//   instanceUserManagement: false,
+//   externalKms: false,
+//   rateLimits: {
+//     readLimit: 60,
+//     writeLimit: 200,
+//     secretsLimit: 40
+//   },
+//   pkiEst: false,
+//   enforceMfa: false,
+//   projectTemplates: false,
+//   kmip: false,
+//   gateway: false,
+//   sshHostGroups: false,
+//   secretScanning: false,
+//   enterpriseSecretSyncs: false,
+//   enterpriseCertificateSyncs: false,
+//   enterpriseAppConnections: false,
+//   fips: false,
+//   eventSubscriptions: false,
+//   machineIdentityAuthTemplates: false
+// });
+
+
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
-  slug: null,
+  slug: "enterprise",
   tier: -1,
   workspaceLimit: null,
   workspacesUsed: 0,
@@ -21,52 +82,52 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   environmentsUsed: 0,
   identityLimit: null,
   identitiesUsed: 0,
-  dynamicSecret: false,
+  dynamicSecret: true,
   secretVersioning: true,
-  pitRecovery: false,
-  ipAllowlisting: false,
-  rbac: false,
-  githubOrgSync: false,
-  customRateLimits: false,
-  customAlerts: false,
-  secretAccessInsights: false,
-  auditLogs: false,
-  auditLogsRetentionDays: 0,
-  auditLogStreams: false,
+  pitRecovery: true,
+  ipAllowlisting: true,
+  rbac: true,
+  githubOrgSync: true,
+  customRateLimits: true,
+  customAlerts: true,
+  secretAccessInsights: true,
+  auditLogs: true,
+  auditLogsRetentionDays: 365,
+  auditLogStreams: true,
   auditLogStreamLimit: 3,
-  samlSSO: false,
-  enforceGoogleSSO: false,
-  hsm: false,
-  oidcSSO: false,
-  scim: false,
-  ldap: false,
-  groups: false,
+  samlSSO: true,
+  enforceGoogleSSO: true,
+  hsm: true,
+  oidcSSO: true,
+  scim: true,
+  ldap: true,
+  groups: true,
   status: null,
   trial_end: null,
   has_used_trial: true,
-  secretApproval: false,
-  secretRotation: false,
-  caCrl: false,
-  instanceUserManagement: false,
-  externalKms: false,
+  secretApproval: true,
+  secretRotation: true,
+  caCrl: true,
+  instanceUserManagement: true,
+  externalKms: true,
   rateLimits: {
-    readLimit: 60,
-    writeLimit: 200,
-    secretsLimit: 40
+    readLimit: null,
+    writeLimit: null,
+    secretsLimit: null
   },
-  pkiEst: false,
-  enforceMfa: false,
-  projectTemplates: false,
-  kmip: false,
-  gateway: false,
-  sshHostGroups: false,
-  secretScanning: false,
-  enterpriseSecretSyncs: false,
-  enterpriseCertificateSyncs: false,
-  enterpriseAppConnections: false,
-  fips: false,
-  eventSubscriptions: false,
-  machineIdentityAuthTemplates: false
+  pkiEst: true,
+  enforceMfa: true,
+  projectTemplates: true,
+  kmip: true,
+  gateway: true,
+  sshHostGroups: true,
+  secretScanning: true,
+  enterpriseSecretSyncs: true,
+  enterpriseCertificateSyncs: true,
+  enterpriseAppConnections: true,
+  fips: true,
+  eventSubscriptions: true,
+  machineIdentityAuthTemplates: true
 });
 
 export const setupLicenseRequestWithStore = (
@@ -138,17 +199,24 @@ export const setupLicenseRequestWithStore = (
   return { request: licenseReq, refreshLicense };
 };
 
+// export const throwOnPlanSeatLimitReached = async (
+//   licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+//   orgId: string,
+//   type?: UserAliasType
+// ) => {
+//   const plan = await licenseService.getPlan(orgId);
+
+//   if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+//     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+//     throw new BadRequestError({
+//       message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
+//     });
+//   }
+// };
 export const throwOnPlanSeatLimitReached = async (
   licenseService: Pick<TLicenseServiceFactory, "getPlan">,
   orgId: string,
   type?: UserAliasType
 ) => {
-  const plan = await licenseService.getPlan(orgId);
-
-  if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-    // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-    throw new BadRequestError({
-      message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
-    });
-  }
+  return
 };

@@ -56,12 +56,15 @@ export const AuditLogsRetentionSection = () => {
 
         return;
       }
-
+      console.log("auditLogsRetentionDays", currentProject.slug, auditLogsRetentionDays);
+      // await updateAuditLogsRetention({
+      //   auditLogsRetentionDays,
+      //   projectSlug: currentProject.slug
+      // });
       await updateAuditLogsRetention({
         auditLogsRetentionDays,
-        projectSlug: currentProject.slug
+        projectId: currentProject.id
       });
-
       createNotification({
         text: "Successfully updated audit logs retention period",
         type: "success"
