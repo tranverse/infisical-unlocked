@@ -42,7 +42,8 @@ export default {
     },
     migrations: {
       tableName: "infisical_migrations",
-      loadExtensions: [".mjs", ".ts"]
+      loadExtensions: [".mjs", ".ts"],
+      directory: path.join(__dirname, "migrations")
     }
   },
   production: {

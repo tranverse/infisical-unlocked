@@ -189,7 +189,10 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
 
-  KeyValueStore = "key_value_store"
+  KeyValueStore = "key_value_store",
+
+  // new tables
+  SecretMapping = "secret_mappings"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
