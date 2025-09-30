@@ -24,8 +24,10 @@ import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
-
 import { TMigrationEnvConfig } from "./env-config";
+// mapping
+// import { secretMappingDALFactory } from "../../../services/secret-mapping/secret-mapping-dal"
+
 
 type TDependencies = {
   envConfig: TMigrationEnvConfig;
@@ -48,6 +50,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const projectDAL = projectDALFactory(db);
+
 
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
@@ -75,6 +78,8 @@ export const getMigrationPITServices = async ({
   keyStore: TKeyStoreFactory;
   envConfig: TMigrationEnvConfig;
 }) => {
+  // mapping
+  // const secretMappingDAL = secretMappingDALFactory(db);
   const projectDAL = projectDALFactory(db);
   const folderCommitDAL = folderCommitDALFactory(db);
   const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
@@ -119,6 +124,8 @@ export const getMigrationPITServices = async ({
   await kmsService.startService();
 
   const folderCommitService = folderCommitServiceFactory({
+      // mapping
+    // secretMappingDAL,
     folderCommitDAL,
     folderCommitChangesDAL,
     folderCheckpointDAL,
@@ -134,7 +141,8 @@ export const getMigrationPITServices = async ({
     folderTreeCheckpointResourcesDAL,
     kmsService,
     secretTagDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+
   });
 
   return { folderCommitService };

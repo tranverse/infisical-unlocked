@@ -81,6 +81,8 @@ export type TCreateSecretDTO = TProjectPermission & {
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   secretMetadata?: ResourceMetadataDTO;
+  // mapping
+  mappingId?: string | null
 };
 
 export type TUpdateSecretDTO = TProjectPermission & {

@@ -23,6 +23,8 @@ import type {
   TFindSecretsByFolderIdsFilter,
   TGetSecretsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { kmsServiceFactory } from "../kms/kms-service";
+
 
 export const SecretServiceCacheKeys = {
   get productKey() {
@@ -965,6 +967,27 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  // find secret with same value
+  const getAllSecrets  = async () => {
+    const secretValues = await (db.replicaNode())(TableName.SecretV2)
+    return secretValues;
+  }
+
+  // update mappingId
+  const updateMappingIdById = async (secretId: string, mappingId: string) => {
+        console.log("mappingId: ", mappingId)
+        console.log("samevalue: ", mappingId)
+    
+
+      const secret = await db(TableName.SecretV2)
+        .where(`${TableName.SecretV2}.id`, secretId)
+        .update({mappingId})
+        .returning("*")
+      return secret;
+
+  };
+
+
   return {
     ...secretOrm,
     update,
@@ -984,6 +1007,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     find,
     invalidateSecretCacheByProjectId,
     findSecretsWithReminderRecipients,
-    findSecretsWithReminderRecipientsOld
+    findSecretsWithReminderRecipientsOld,
+    getAllSecrets,
+    updateMappingIdById
   };
 };

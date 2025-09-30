@@ -87,12 +87,16 @@ import {
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
-
+// secret mapping
+import { TSecretMappingDALFactory } from "../secret-mapping/secret-mapping-dal";
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
+  // secret mapping
+  secretMappingDAL: TSecretMappingDALFactory;
+
   projectDAL: Pick<TProjectDALFactory, "findById">;
   secretVersionDAL: TSecretVersionV2DALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey" | "decryptWithRootKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -106,7 +110,7 @@ type TSecretV2BridgeServiceFactoryDep = {
     | "findByManySecretPath"
     | "find"
     | "findBySecretPathMultiEnv"
-    | "findSecretPathByFolderIds"
+    | "findSecretPathByFolderIds" 
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
@@ -129,6 +133,8 @@ export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServ
  */
 export const secretV2BridgeServiceFactory = ({
   secretDAL,
+  // mapping
+  secretMappingDAL,
   projectDAL,
   projectEnvDAL,
   secretTagDAL,
@@ -146,7 +152,7 @@ export const secretV2BridgeServiceFactory = ({
   kmsService,
   resourceMetadataDAL,
   keyStore,
-  reminderService
+  reminderService,
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -275,12 +281,15 @@ export const secretV2BridgeServiceFactory = ({
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to create personal secret" });
     }
-
+    // check secret already exist
     const doesSecretExist = await secretDAL.findOne({
       key: inputSecret.secretName,
       type: SecretType.Shared,
       folderId
     });
+    // console.log("Secret DAL:", secretDAL)
+    // console.log("Secret mapping DAL:", secretMappingDAL)
+
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
       throw new BadRequestError({ message: "Secret already exist" });
 
@@ -309,6 +318,7 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
+    // check policy
     const project = await projectDAL.findById(projectId);
     await scanSecretPolicyViolations(
       projectId,
@@ -329,17 +339,79 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
+    // encrypted secret
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    // check mapping
+    // find secrets with same value
+    let mappingId = null;
+    const allSecrets = await secretDAL.getAllSecrets()
+    const sameValueSecrets: any[] = []
+    if(allSecrets.length > 0){
+      for(const secret of allSecrets){
+          // console.log("encrypted value:", secret.encryptedValue)
+          // decode every secret in db
+          const plainText = secretManagerDecryptor({cipherTextBlob: secret.encryptedValue})
+          // console.log("plainText:", plainText.toString("utf-8"))
+
+          // compare secret with value input
+          if(plainText.toString("utf-8") == inputSecret.secretValue){
+            sameValueSecrets.push(secret)
+          }
+      }
+    }
+    // console.log("Secret value:", sameValue.length)
+
+    // 
+    if(sameValueSecrets.length > 0){
+        // encrypt input value and compare
+        const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(inputSecretData.secretValue) }).cipherTextBlob
+        // generate random key
+        const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
+        // console.log("secretMappingKey: ", secretMappingKey)
+        // console.log("encryptedValue: ", encryptedValue)
+        let allMappingSecrets = await secretMappingDAL.getAllSecretMapping()
+        console.log(allMappingSecrets)
+        let mapSecret = null;
+        for(const map of allMappingSecrets){
+            const decryptedSecretValue = secretManagerDecryptor({cipherTextBlob: map.value})
+            if(decryptedSecretValue.toString("utf-8") == inputSecret.secretValue){
+              mappingId = map.id
+              mapSecret = map
+              break;
+            }
+        }
+        console.log("mappingSecret", mapSecret)
+        if(!mapSecret){
+          let newMappingSecret = await secretMappingDAL.createSecretMapping({key: secretMappingKey, value: encryptedValue})
+          mappingId = newMappingSecret.id
+        } 
+              // console.log("mappingSecret: ", mappingSecret)
+
+        // console.log("mappingId: ", mappingId)
+        // console.log("samevalue: ", sameValue)
+
+        // update value and mapping id
+        for(const secret of sameValueSecrets){
+            const update =  await secretDAL.updateMappingIdById(secret.id, mappingId)
+            console.log("update:", update)
+        }
+    }
+    console.log("mappingId", mappingId)
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
         orgId: actorOrgId,
         inputSecrets: [
           {
-            version: 1,
+            version: 1,   
             type,
             encryptedComment: setKnexStringValue(
               inputSecretData.secretComment,
@@ -354,7 +426,9 @@ export const secretV2BridgeServiceFactory = ({
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
             metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
-            secretMetadata
+            secretMetadata,
+            // mapping id
+            mappingId: mappingId ?? null
           }
         ],
         resourceMetadataDAL,
@@ -367,9 +441,9 @@ export const secretV2BridgeServiceFactory = ({
           type: actor,
           actorId
         },
-        tx
+        tx,
       });
-
+      console.log("createdSecret:", createdSecret)
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return createdSecret;
     });

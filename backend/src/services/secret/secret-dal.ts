@@ -20,6 +20,7 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
+
   const bulkUpdate = async (
     data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
 
@@ -146,6 +147,8 @@ export const secretDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "get all secret" });
     }
   };
+
+
 
   const getSecretTags = async (secretId: string, tx?: Knex) => {
     try {
@@ -381,6 +384,33 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
+
+  // find secret with same value
+  const findSecretsWithSameValue  = async (value: string) => {
+    const secrets = await (db.replicaNode())(TableName.SecretV2)
+      .select(selectAllTableCols(TableName.SecretV2));
+    return secrets;
+  }
+
+  const updateMappingIdById = async (tx?: Knex | null, secretId: string, mappingId: string) => {
+    // return await db(TableName.SecretV2).columnInfo();
+    // try {
+    //   console.log("updateMappingIdById called", secretId, mappingId);
+    //   const secret = await db(TableName.SecretV2)
+    //     .where(`${TableName.SecretV2}.id`, secretId.trim())
+    //     .update({mappingId: mappingId})
+    //     .increment("version", 1)
+    //     .returning("*")
+    //     .debug(true); 
+    //   console.log("Update result:", secret);
+    //   return secret;
+    // } catch (error) {
+    //   console.error("Error in updateMappingIdById:", error);
+    //   throw new DatabaseError({ error, name: "update mapping id" });
+    // }
+  };
+
+
   return {
     ...secretOrm,
     update,
@@ -395,6 +425,10 @@ export const secretDALFactory = (db: TDbClient) => {
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues,
-    findManySecretsWithTags
+    findManySecretsWithTags,
+    findSecretsWithSameValue,
+    updateMappingIdById
   };
+
+
 };

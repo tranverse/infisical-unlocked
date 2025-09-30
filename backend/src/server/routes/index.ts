@@ -321,6 +321,8 @@ import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+// mapping
+import { secretMappingDALFactory } from "@app/services/secret-mapping/secret-mapping-dal"
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
@@ -363,7 +365,8 @@ export const registerRoutes = async (
   await server.register(registerSecretScanningV2Webhooks, {
     prefix: "/secret-scanning/webhooks"
   });
-
+  // mapping
+  const secretMappingDAL = secretMappingDALFactory(db);
   // db layers
   const userDAL = userDALFactory(db);
   const userAliasDAL = userAliasDALFactory(db);
@@ -399,6 +402,7 @@ export const registerRoutes = async (
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
+
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
@@ -1311,6 +1315,8 @@ export const registerRoutes = async (
   });
 
   const secretV2BridgeService = secretV2BridgeServiceFactory({
+    // secret mapping
+    secretMappingDAL,
     folderDAL,
     projectDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,

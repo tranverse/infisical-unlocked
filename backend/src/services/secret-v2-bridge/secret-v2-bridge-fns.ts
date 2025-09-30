@@ -90,7 +90,9 @@ export const fnSecretBulkInsert = async ({
       metadata,
       reminderNote,
       encryptedValue,
-      reminderRepeatDays
+      reminderRepeatDays,
+      // mapping id
+      mappingId
     }) => ({
       skipMultilineEncoding,
       type,
@@ -101,7 +103,9 @@ export const fnSecretBulkInsert = async ({
       metadata,
       reminderNote,
       encryptedValue,
-      reminderRepeatDays
+      reminderRepeatDays,
+      // mapping id
+      mappingId
     })
   );
 

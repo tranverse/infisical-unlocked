@@ -75,6 +75,8 @@ export type TCreateSecretDTO = {
   metadata?: {
     source?: string;
   };
+  // secret mapping
+  // mappingId: String | null;
 } & TProjectPermission;
 
 export type TUpdateSecretDTO = {
@@ -99,6 +101,8 @@ export type TUpdateSecretDTO = {
   metadata?: {
     source?: string;
   };
+  // secret mapping
+  mappingId: String | null;
 } & TProjectPermission;
 
 export type TDeleteSecretDTO = {
@@ -250,6 +254,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   secretMetadata?: ResourceMetadataDTO;
+
 };
 
 export type TUpdateSecretRawDTO = TProjectPermission & {

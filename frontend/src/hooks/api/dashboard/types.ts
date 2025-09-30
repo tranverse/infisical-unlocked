@@ -9,6 +9,7 @@ import { SecretV3Raw, SecretV3RawSanitized } from "@app/hooks/api/secrets/types"
 export type DashboardProjectSecretsOverviewResponse = {
   folders?: (TSecretFolder & { environment: string })[];
   dynamicSecrets?: (TDynamicSecret & { environment: string })[];
+  mappingSecrets?: ()
   secrets?: SecretV3Raw[];
   imports?: TSecretImport[];
   totalSecretCount?: number;

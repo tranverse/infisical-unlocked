@@ -49,10 +49,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.index("secretBlindIndex");
       t.timestamps(true, true, true);
-
-      // secret mapping
-      t.uuid("mappingId").nullable();
-      t.foreign("mappingId").references("id").inTable(TableName.SecretMapping).onDelete("SET NULL")
     });
   }
   await createOnUpdateTrigger(knex, TableName.Secret);

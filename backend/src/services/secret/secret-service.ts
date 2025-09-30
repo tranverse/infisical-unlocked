@@ -55,6 +55,9 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretDALFactory } from "./secret-dal";
+
+// secret mapping
+import { TSecretMappingDALFactory } from "../secret-mapping/secret-mapping-dal";
 import {
   conditionallyHideSecretValue,
   decryptSecretRaw,
@@ -93,15 +96,24 @@ import {
   TUpdateBulkSecretDTO,
   TUpdateManySecretRawDTO,
   TUpdateSecretDTO,
-  TUpdateSecretRawDTO
+  TUpdateSecretRawDTO,
+
 } from "./secret-types";
+import {
+  TCreateSecretMappingDTO
+} from "../secret-mapping/secret-mapping-types"
+
 import { TSecretVersionDALFactory } from "./secret-version-dal";
 import { TSecretVersionTagDALFactory } from "./secret-version-tag-dal";
+import { secretMappingDALFactory } from "../secret-mapping/secret-mapping-dal";
 
 type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
+  // secret mapping
+  secretMappingDAL: TSecretMappingDALFactory
+  // 
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
@@ -131,6 +143,8 @@ type TSecretServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
+
+
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -154,7 +168,10 @@ export const secretServiceFactory = ({
   secretV2BridgeService,
   secretApprovalRequestService,
   licenseService,
-  reminderService
+  reminderService,
+
+  // secret mapping
+  secretMappingDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -316,6 +333,7 @@ export const secretServiceFactory = ({
         environmentSlug: folder.environment.slug
       });
     }
+
     return { ...secret[0], environment, workspace: projectId, tags, secretPath: path };
   };
 
@@ -1655,6 +1673,8 @@ export const secretServiceFactory = ({
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const project = await projectDAL.findById(projectId);
+
+
     if (project.enforceCapitalization) {
       if (secretName !== secretName.toUpperCase()) {
         throw new BadRequestError({
@@ -1663,11 +1683,15 @@ export const secretServiceFactory = ({
         });
       }
     }
+    console.log("bot key", botKey)
+    console.log("shouldUseSecretV2Bridge", shouldUseSecretV2Bridge)
 
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
+
+    // case 1
     if (shouldUseSecretV2Bridge) {
       if (policy) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
@@ -1711,38 +1735,59 @@ export const secretServiceFactory = ({
         secretReminderNote,
         skipMultilineEncoding,
         secretReminderRepeatDays,
-        secretMetadata
+        secretMetadata,
       });
       return { secret, type: SecretProtectionType.Direct as const };
     }
-
+    
+    // case: use botkey
     if (!botKey)
       throw new NotFoundError({
         message: `Project bot for project with ID '${projectId}' not found. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
+    
+    let secretKeyEncrypted = secretName;
+    let secretValueEncrypted = secretValue;
+    let secretCommentEncrypted = ""
 
-    const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
-      plaintext: secretName,
+    secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
+    plaintext: secretName,
+    key: botKey,
+    keySize: SymmetricKeySize.Bits128
+  });
+    secretValueEncrypted = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: secretValue || "",
       key: botKey,
       keySize: SymmetricKeySize.Bits128
     });
-    const secretValueEncrypted = crypto
-      .encryption()
-      .symmetric()
-      .encrypt({
-        plaintext: secretValue || "",
-        key: botKey,
-        keySize: SymmetricKeySize.Bits128
-      });
-    const secretCommentEncrypted = crypto
-      .encryption()
-      .symmetric()
-      .encrypt({
-        plaintext: secretComment || "",
-        key: botKey,
-        keySize: SymmetricKeySize.Bits128
-      });
+  secretCommentEncrypted = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: secretComment || "",
+      key: botKey,
+      keySize: SymmetricKeySize.Bits128
+    });
+    console.log("Secret value:", secretValueEncrypted)
+    // find secret mapping
+    let mappingId = "";
+    const sameValueSecrets = await secretDAL.findSecretsWithSameValue(secretValueEncrypted)
+    
+    if(sameValueSecrets.length > 0){
+        const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
+        const mappingSecret = await secretMappingDAL.createSecretMapping({key: secretMappingKey, value: secretValueEncrypted})
+        mappingId = mappingSecret.id
+
+
+        for(const secret of sameValueSecrets){
+          await secretDAL.updateMappingIdById(secret.id, mappingId)
+        }
+    }
+
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
@@ -1772,9 +1817,15 @@ export const secretServiceFactory = ({
           ]
         }
       });
+
+
+
       return { type: SecretProtectionType.Approval as const, approval };
     }
 
+
+
+    // create new secret
     const secret = await createSecret({
       secretName,
       projectId,
@@ -1797,7 +1848,10 @@ export const secretServiceFactory = ({
       skipMultilineEncoding,
       secretReminderRepeatDays,
       secretReminderNote,
-      tags: tagIds
+      tags: tagIds,
+
+      // mapping id
+      // mappingId
     });
 
     return {
