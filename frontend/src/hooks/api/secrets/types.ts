@@ -254,6 +254,11 @@ export type TGetSecretReferenceTreeDTO = {
   projectId: string;
 };
 
+export type TGetMappingSecretDTO = {
+  projectId: string,
+  
+}
+
 export type TSecretReferenceTraceNode = {
   key: string;
   value?: string;

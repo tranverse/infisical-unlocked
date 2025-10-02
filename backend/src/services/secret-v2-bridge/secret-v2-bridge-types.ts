@@ -102,6 +102,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
     source?: string;
   };
   secretMetadata?: ResourceMetadataDTO;
+  mappingId;
 };
 
 export type TDeleteSecretDTO = TProjectPermission & {

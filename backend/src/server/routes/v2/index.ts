@@ -11,6 +11,7 @@ import { registerPkiTemplatesRouter } from "./pki-templates-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
 import { registerServiceTokenRouter } from "./service-token-router";
+import {registerSecretMappingRouter} from './secret-mapping-router'
 import { registerUserRouter } from "./user-router";
 
 export const registerV2Routes = async (server: FastifyZodProvider) => {
@@ -37,6 +38,7 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
+  await server.register(registerSecretMappingRouter, { prefix: "/secret-mappings" }); //secret mapping
 
   // moved to v1/projects
   await server.register(

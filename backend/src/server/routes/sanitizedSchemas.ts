@@ -10,7 +10,8 @@ import {
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
   SecretTagsSchema,
-  UsersSchema
+  UsersSchema,
+  SecretMappingsSchema 
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -148,6 +149,11 @@ export const secretRawSchema = z.object({
   isRotatedSecret: z.boolean().optional(),
   rotationId: z.string().uuid().nullish()
 });
+
+export const mappingSecretSchema = SecretMappingsSchema.extend({
+  value: z.string()
+});
+
 
 export const ProjectPermissionSchema = z.object({
   action: z

@@ -4,3 +4,21 @@ export type TCreateSecretMappingDTO = {
     secretName: String,
     value: String
 } & TProjectPermission;
+
+export type TUpdateMappingSecretDTO = TProjectPermission & {
+    key: string;
+    value: string;
+    newValue: string;
+    projectId: string;
+    secretPath: string;
+    environment: string;
+}
+
+export type TGetMappingSecretDTO = TProjectPermission & {
+    projectId: string;
+}
+
+export type TDeleteMappingSecretDTO = TProjectPermission & {
+    mappingId: string;
+    projectId: string;
+}

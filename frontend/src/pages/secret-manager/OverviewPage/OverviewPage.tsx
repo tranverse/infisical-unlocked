@@ -101,8 +101,7 @@ import {
   useDynamicSecretOverview,
   useFolderOverview,
   useSecretOverview,
-  useSecretRotationOverview,
-  useMappingSecretOverview
+  useSecretRotationOverview
 } from "@app/hooks/utils";
 import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/OverviewPage/components/SecretOverviewSecretRotationRow";
 import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
@@ -117,7 +116,6 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
-import { SecretOverviewMappingSecretRow } from "./components/SecretOverviewMappingSecret";
 import {
   SecretNoAccessOverviewTableRow,
   SecretOverviewTableRow
@@ -288,7 +286,6 @@ export const OverviewPage = () => {
       includeFolders: isFilteredByResources ? filter.folder : true,
       includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
       includeSecrets: isFilteredByResources ? filter.secret : true,
-      includeMappingSecrets: isFilteredByResources ? filter.mapping : true, // mapping secret
       includeImports: true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       search: debouncedSearchFilter,
@@ -315,9 +312,7 @@ export const OverviewPage = () => {
     totalUniqueDynamicSecretsInPage,
     totalUniqueSecretRotationsInPage,
     importedByEnvs,
-    usedBySecretSyncs,
-    // mapping secret
-    mappingSecrets
+    usedBySecretSyncs
   } = overview ?? {};
 
   const secretImportsShaped = secretImports
@@ -346,10 +341,6 @@ export const OverviewPage = () => {
 
   const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
     useDynamicSecretOverview(dynamicSecrets);
-
-  // mapping secret
-
-  const {mappingSerectNames, isMappingSecretPresnetInEnv} = useMappingSecretOverview(mappingSecrets)
 
   const {
     secretRotationNames,
@@ -1513,14 +1504,6 @@ export const OverviewPage = () => {
                         }
                       />
                     ))}
-                    {dynamicSecretNames.map((dynamicSecretName, index) => (
-                      <SecretOverviewDynamicSecretRow
-                        dynamicSecretName={dynamicSecretName}
-                        isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
-                        environments={visibleEnvs}
-                        key={`overview-${dynamicSecretName}-${index + 1}`}
-                      />
-                    ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
@@ -1539,7 +1522,6 @@ export const OverviewPage = () => {
                         importedBy={importedBy}
                       />
                     ))}
-
                     <SecretNoAccessOverviewTableRow
                       environments={visibleEnvs}
                       count={Math.max(

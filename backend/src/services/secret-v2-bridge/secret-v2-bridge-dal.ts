@@ -25,7 +25,6 @@ import type {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { kmsServiceFactory } from "../kms/kms-service";
 
-
 export const SecretServiceCacheKeys = {
   get productKey() {
     const { INFISICAL_PLATFORM_VERSION } = getConfig();
@@ -968,25 +967,58 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   // find secret with same value
-  const getAllSecrets  = async () => {
-    const secretValues = await (db.replicaNode())(TableName.SecretV2)
+  const getAllSecretInProjectAndNotInFolder = async (projectId: string, folderId: string) => {
+    const secretValues = await db
+      .replicaNode()(TableName.SecretV2 + "")
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .where(`${TableName.Environment}.projectId`, projectId)
+      .where(`${TableName.SecretFolder}.id`, "!=", folderId)
+      .select(db.ref("id").withSchema(TableName.SecretV2).as("secretId"))
+      .select(db.ref("mappingId").withSchema(TableName.SecretV2))
+      .select(db.ref("encryptedValue").withSchema(TableName.SecretV2));
+
     return secretValues;
-  }
+  };
 
   // update mappingId
   const updateMappingIdById = async (secretId: string, mappingId: string) => {
-        console.log("mappingId: ", mappingId)
-        console.log("samevalue: ", mappingId)
-    
-
-      const secret = await db(TableName.SecretV2)
-        .where(`${TableName.SecretV2}.id`, secretId)
-        .update({mappingId})
-        .returning("*")
-      return secret;
-
+    const secret = await db(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.id`, secretId)
+      .update({ mappingId: mappingId });
+    return secret;
   };
 
+  // getSecrets by mapping id
+  const getSecretsByMappingIdAndNotInSecretId = async (mappingId: string, secretId: string) => {
+    // console.log(await db(TableName.SecretV2).columnInfo())
+    const secrets = await db
+      .replicaNode()(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.mappingId`, mappingId)
+      .where(`${TableName.SecretV2}.id`, "!=", secretId);
+    return secrets;
+  };
+
+  const getSecretsByMappingId = async (mappingId: string) => {
+    const secrets = await db.replicaNode()(TableName.SecretV2).where(`${TableName.SecretV2}.mappingId`, mappingId);
+    return secrets;
+  };
+
+  const getAllSecretValueInOneService = async (secretPathh: string) => {
+    const secrets = await db
+      .replicaNode()(TableName.SecretV2)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .where(`${TableName.SecretFolder}.id`, secretPathh);
+    return secrets;
+  };
+  const getAllSecretValueInOneServiceAndExceptCurrentSecret = async (secretPathh: string, secretId: string) => {
+    const secrets = await db
+      .replicaNode()(TableName.SecretV2)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .where(`${TableName.SecretFolder}.id`, secretPathh)
+      .where(`${TableName.SecretV2}.id`, "!=", secretId);
+    return secrets;
+  };
 
   return {
     ...secretOrm,
@@ -1008,7 +1040,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     invalidateSecretCacheByProjectId,
     findSecretsWithReminderRecipients,
     findSecretsWithReminderRecipientsOld,
-    getAllSecrets,
-    updateMappingIdById
+    getAllSecretInProjectAndNotInFolder,
+    updateMappingIdById,
+    getSecretsByMappingIdAndNotInSecretId,
+    getSecretsByMappingId,
+    getAllSecretValueInOneService,
+    getAllSecretValueInOneServiceAndExceptCurrentSecret
   };
 };

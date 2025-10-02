@@ -18,6 +18,7 @@ import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridg
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedTagSchema, secretRawSchema } from "../sanitizedSchemas";
+import { MAPPING_SECRETS } from "../../../lib/api-docs";
 
 const SecretReferenceNode = z.object({
   key: z.string(),
@@ -50,7 +51,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.Secrets],
       description: "List secrets",
-      security: [
+      security: [   
         {
           bearerAuth: []
         }
@@ -1332,4 +1333,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return message;
     }
   });
+
+
+
 };
+   

@@ -341,3 +341,8 @@ export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
     queryKey: secretKeys.getSecretReferenceTree(dto),
     queryFn: () => fetchSecretReferenceTree(dto)
   });
+
+
+export const fetchMappingSecrets = async ({projectId}) => {
+
+}

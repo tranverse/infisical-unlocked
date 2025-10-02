@@ -516,7 +516,7 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
+    console.log("secretNameaaaaa111", projectId)
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -2074,6 +2074,7 @@ export const secretServiceFactory = ({
     type,
     secretPath
   }: TDeleteSecretRawDTO) => {
+            console.log("secretNameaaaaa", secretName)
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
@@ -2100,6 +2101,7 @@ export const secretServiceFactory = ({
         });
         return { type: SecretProtectionType.Approval as const, approval };
       }
+
       const secret = await secretV2BridgeService.deleteSecret({
         secretName,
         type,
@@ -2538,7 +2540,7 @@ export const secretServiceFactory = ({
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
-
+    console.log("projectidaaa", projectId)
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
       actor === ActorType.USER

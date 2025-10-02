@@ -235,7 +235,7 @@ export const fnSecretBulkUpdate = async ({
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
-      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata, secretMetadata }
+      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata, secretMetadata, mappingId }
     }) => ({
       filter: { ...filter, folderId },
       data: {
@@ -245,7 +245,8 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         metadata: JSON.stringify(metadata || secretMetadata || []),
-        encryptedValue
+        encryptedValue,
+        mappingId
       }
     })
   );
@@ -262,6 +263,7 @@ export const fnSecretBulkUpdate = async ({
         version,
         metadata,
         encryptedValue,
+        mappingId,
         id: secretId
       }) => ({
         skipMultilineEncoding,
@@ -276,7 +278,8 @@ export const fnSecretBulkUpdate = async ({
         secretId,
         userActorId,
         identityActorId,
-        actorType
+        actorType,
+        mappingId
       })
     ),
     tx

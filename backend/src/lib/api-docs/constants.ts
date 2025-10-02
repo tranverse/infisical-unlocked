@@ -1031,7 +1031,9 @@ export const RAW_SECRETS = {
     secretReminderNote: "Note to be attached in notification email.",
     secretReminderRecipients:
       "An array of user IDs that will receive the reminder email. If not specified, all project members will receive the reminder email.",
-    newSecretName: "The new name for the secret."
+    newSecretName: "The new name for the secret.",
+    mappingSecretValue: "Mapping secret value updated",
+
   },
   DELETE: {
     secretName: "The name of the secret to delete.",
@@ -1054,6 +1056,22 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located."
   }
 } as const;
+
+export const MAPPING_SECRETS = {
+  LIST: {
+    mappingId: "The Mapping ID of the project to list secret imports from.",
+  },
+  GET: {
+    mappingSecretImportId: "The ID of the secret import to fetch."
+  },
+  UPDATE: {
+    secretKey: "The ID of the secret import to update.",
+  },
+  DELETE: {
+    projectId: "The ID of the project to delete the secret import from.",
+    path: "The path of the secret import to delete."
+  }
+}
 
 export const SECRET_IMPORTS = {
   LIST: {

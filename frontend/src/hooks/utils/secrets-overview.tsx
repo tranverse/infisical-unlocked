@@ -141,30 +141,3 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
 
   return { secKeys, getEnvSecretKeyCount };
 };
-
-// mapping secret
-export const useMappingSecretOverview = (
-  mappingSecrets: DashboardProjectSecretsOverview["mappingSecrets"]
-) => {
-  const mappingSecretNames = useMemo(() => {
-    const names = new Set<string>();
-    mappingSecrets?.forEach((mappingSecret) => {
-      names.add(mappingSecret.name);
-    });
-    return [...names];
-  }, [mappingSecrets]);
-
-  const isMappingSecretPresentInEnv = useCallback(
-    (name: string, env: string) => {
-      return Boolean(
-        mappingSecrets?.find(
-          ({ name: mappingSecretName, environment }) =>
-            mappingSecretName === name && environment === env
-        )
-      );
-    },
-    [mappingSecrets]
-  );
-
-  return { mappingSecretNames, isMappingSecretPresentInEnv };
-};

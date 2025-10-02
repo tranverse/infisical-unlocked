@@ -322,8 +322,8 @@ import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 // mapping
-import { secretMappingDALFactory } from "@app/services/secret-mapping/secret-mapping-dal"
-
+import { secretMappingDALFactory } from "@app/services/secret-mapping/secret-mapping-dal";
+import { secretMappingServiceFactory } from "../../services/secret-mapping/secret-mapping-service";
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
@@ -402,7 +402,6 @@ export const registerRoutes = async (
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
-
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
@@ -614,6 +613,13 @@ export const registerRoutes = async (
     licenseService,
     userDAL,
     secretApprovalRequestDAL
+  });
+  // secret mapping
+  const secretMappingService = secretMappingServiceFactory({
+    secretMappingDAL,
+    kmsService,
+    secretDAL,
+    permissionService
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
 
@@ -1390,7 +1396,9 @@ export const registerRoutes = async (
     secretV2BridgeService,
     secretApprovalRequestService,
     licenseService,
-    reminderService
+    reminderService,
+    secretMappingDAL, // secret mapping
+    secretMappingService
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2242,7 +2250,8 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    notification: notificationService
+    notification: notificationService,
+    secretMapping: secretMappingService // secret mapping
   });
 
   const cronJobs: CronJob[] = [];
