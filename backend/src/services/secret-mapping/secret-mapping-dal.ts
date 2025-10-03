@@ -36,11 +36,12 @@ export const secretMappingDALFactory = (db: TDbClient) => {
   const getAllSecretMappingInProject = async (projectId: string) => {
     const secretMappings = await db
       .replicaNode()(TableName.SecretMapping)
+      .distinct(`${TableName.SecretMapping}.id`)
       .join(`${TableName.SecretV2}`, `${TableName.SecretMapping}.id`, `${TableName.SecretV2}.mappingId`)
       .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .where(`${TableName.Environment}.projectId`, projectId)
-      .select(selectAllTableCols(TableName.SecretMapping))
+      .select(selectAllTableCols(TableName.SecretMapping));
     return secretMappings;
   };
 
@@ -82,6 +83,23 @@ export const secretMappingDALFactory = (db: TDbClient) => {
     return await db(TableName.SecretMapping).where(`${TableName.SecretMapping}.value`, value);
   };
 
+  const getSecretsAndMappingSecretInProject = async (mappingId) => {
+    const mappingSecret = await db(TableName.SecretMapping).where(`${TableName.SecretMapping}.id`, mappingId).first();
+
+    const secrets = await db(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.mappingId`, mappingId)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .select(selectAllTableCols(TableName.SecretV2))
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
+      .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
+
+    return {
+      mappingSecret,
+      secrets
+    };
+  };
+
   return {
     ...secretMappingOrm,
     getSecretMappingById,
@@ -92,6 +110,7 @@ export const secretMappingDALFactory = (db: TDbClient) => {
     deleteSecretMappingById,
     findOneByValue,
     findOneByKey,
-    updateMappingSecretValue
+    updateMappingSecretValue,
+    getSecretsAndMappingSecretInProject
   };
 };

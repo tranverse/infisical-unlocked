@@ -1,6 +1,6 @@
 import TSecretMappingDALFactory from "./secret-mapping-dal";
 import TSecretV2BridgeDALFactory from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { TUpdateMappingSecretDTO, TGetMappingSecretDTO } from "./secret-mapping-types";
+import { TUpdateMappingSecretDTO, TGetMappingSecretDTO, TGetSecretsAndMappingSecretDTO } from "./secret-mapping-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmsDataKey } from "../kms/kms-types";
@@ -54,7 +54,55 @@ export const secretMappingServiceFactory = ({
 
     return returnSecret;
   };
+  const getSecretsAndMappingSecretInProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    mappingId,
+    environment = "env",
+    secretPath = "/"
+  }: TGetSecretsAndMappingSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
 
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+
+    const { mappingSecret, secrets } = await secretMappingDAL.getSecretsAndMappingSecretInProject(mappingId);
+    console.log("mappingSecret", mappingSecret);
+
+    const returnMappingSecret = {
+      ...mappingSecret,
+      value: mappingSecret.value ? secretManagerDecryptor({ cipherTextBlob: mappingSecret.value }).toString() : ""
+    };
+
+    const returnSecrets = secrets.map((secret) => {
+      return reshapeBridgeSecret(projectId, secret.environment, secretPath, {
+        ...secret,
+        value: secret.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+          : "",
+        comment: secret.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+          : "",
+        folderName: secret.folderName
+      });
+    });
+    console.log("returnSecrets", returnSecrets);
+
+    return {
+      returnMappingSecret,
+      returnSecrets
+    };
+  };
   const updateValueMappingSecret = async ({
     actor,
     actorId,
@@ -62,7 +110,8 @@ export const secretMappingServiceFactory = ({
     projectId,
     actorOrgId,
     actorAuthMethod,
-    secretPath
+    secretPath,
+    ...inputSecret
   }: TUpdateMappingSecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -84,7 +133,7 @@ export const secretMappingServiceFactory = ({
 
     let mappingSecret;
     let mappingSecretId: string;
-    const oldMappingSecret = await secretMappingDAL.findOneByKey(secretKey);
+    const oldMappingSecret = await secretMappingDAL.findOneByKey(inputSecret.secretKey);
     console.log("oldMappingSecret", oldMappingSecret);
 
     mappingSecretId = oldMappingSecret.id;
@@ -102,7 +151,6 @@ export const secretMappingServiceFactory = ({
       mappingSecretId
     );
     console.log("secrets", environment);
-    console.log("updateMappingSecret", updateMappingSecret);
     const reshapedSecrets = secrets.map((secret) => {
       return reshapeBridgeSecret(projectId, environment, secretPath, {
         ...secret,
@@ -111,9 +159,12 @@ export const secretMappingServiceFactory = ({
           : "",
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-          : ""
+          : "",
+        folderName: secret.folderName
       });
     });
+    console.log("reshapedSecrets", reshapedSecrets);
+
     return {
       updateMappingSecret: {
         ...updateMappingSecret,
@@ -154,6 +205,7 @@ export const secretMappingServiceFactory = ({
   return {
     updateValueMappingSecret,
     getMappingSecretsInProject,
-    deleteMappingSecretsInProject
+    deleteMappingSecretsInProject,
+    getSecretsAndMappingSecretInProject
   };
 };

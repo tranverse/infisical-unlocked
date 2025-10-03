@@ -1,24 +1,30 @@
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 
 export type TCreateSecretMappingDTO = {
-    secretName: String,
-    value: String
+  secretName: String;
+  value: String;
 } & TProjectPermission;
 
 export type TUpdateMappingSecretDTO = TProjectPermission & {
-    key: string;
-    value: string;
-    newValue: string;
-    projectId: string;
-    secretPath: string;
-    environment: string;
-}
+  secretKey: string;
+  value: string;
+  newValue: string;
+  projectId: string;
+  secretPath: string;
+  environment: string;
+};
 
 export type TGetMappingSecretDTO = TProjectPermission & {
-    projectId: string;
-}
+  projectId: string;
+};
 
 export type TDeleteMappingSecretDTO = TProjectPermission & {
-    mappingId: string;
-    projectId: string;
-}
+  mappingId: string;
+  projectId: string;
+};
+
+export type TGetSecretsAndMappingSecretDTO = TProjectPermission & {
+  mappingId: string;
+  projectId: string;
+  environment: string;
+};

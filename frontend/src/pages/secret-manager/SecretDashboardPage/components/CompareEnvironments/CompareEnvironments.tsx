@@ -55,7 +55,8 @@ import {
   useDynamicSecretOverview,
   useFolderOverview,
   useSecretOverview,
-  useSecretRotationOverview
+  useSecretRotationOverview,
+  useMappingSecretOverview
 } from "@app/hooks/utils";
 import { SecretTableResourceCount } from "@app/pages/secret-manager/OverviewPage/components/SecretTableResourceCount";
 
@@ -63,7 +64,8 @@ import { DynamicSecretRow } from "./components/DynamicSecretRow";
 import { FolderRow } from "./components/FolderRow";
 import { SecretRotationRow } from "./components/SecretRotationRow";
 import { SecretNoAccessRow, SecretRow } from "./components/SecretRow";
-
+import { SecretOverviewMappingSecretRow } from "../../../OverviewPage/components/SecretOverviewMappingSecretRow/SecretOverviewMappingSecretRow";
+import { MappingSecretRow } from "./components/MappingSecretRow";
 type Props = {
   secretPath: string;
 };
@@ -179,12 +181,12 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
     },
     { enabled: Boolean(compareEnvironments.length) }
   );
-
   const {
     secrets,
     folders,
     dynamicSecrets,
     secretRotations,
+    mappingSecrets,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -194,7 +196,8 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
     totalUniqueSecretsInPage,
     totalUniqueSecretImportsInPage,
     totalUniqueDynamicSecretsInPage,
-    totalUniqueSecretRotationsInPage
+    totalUniqueSecretRotationsInPage,
+    totalUniqueMappingSecretsInPage
   } = overview ?? {};
 
   const secretImportsShaped = secretImports
@@ -229,6 +232,8 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
   const { secKeys, getEnvSecretKeyCount } = useSecretOverview(
     secrets?.concat(secretImportsShaped) || []
   );
+
+  const { mappingKeys, getMappingValue } = useMappingSecretOverview(mappingSecrets);
 
   const getSecretByKey = useCallback(
     (env: string, key: string) => {
@@ -439,6 +444,14 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                     key={`overview-${secretRotationName}-${index + 1}`}
                     colWidth={colWidth}
                     tableWidth={tableWidth}
+                  />
+                ))}
+                {mappingKeys.map((mappingKey, index) => (
+                  <MappingSecretRow
+                    mappingSecretName={mappingKey}
+                    // isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
+                    // environments={visibleEnvs}
+                    key={`overview-${mappingKey}-${index + 1}`}
                   />
                 ))}
                 {secKeys.map((key, index) => (

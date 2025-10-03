@@ -11,7 +11,6 @@ import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
 import { NotFoundPage } from "./pages/public/NotFoundPage/NotFoundPage";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
-
 import "@xyflow/react/dist/style.css";
 import "nprogress/nprogress.css";
 import "react-toastify/dist/ReactToastify.css";

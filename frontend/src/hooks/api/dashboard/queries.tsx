@@ -25,6 +25,7 @@ import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
 
 import { SecretV3Raw } from "../types";
+import { useGetMappingSecrets } from "../mappingSecrets";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -173,6 +174,7 @@ export const useGetProjectSecretsOverview = (
     includeImports,
     includeDynamicSecrets,
     includeSecretRotations,
+    includeMappingSecrets,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -186,7 +188,8 @@ export const useGetProjectSecretsOverview = (
   >
 ) => {
   const queryClient = useQueryClient();
-
+  const { data: mappings } = useGetMappingSecrets({ projectId });
+  console.log(mappings);
   return useQuery({
     ...options,
     // wait for all values to be available
@@ -204,6 +207,7 @@ export const useGetProjectSecretsOverview = (
       includeImports,
       includeDynamicSecrets,
       includeSecretRotations,
+      includeMappingSecrets, // mapping secret
       environments
     }),
     queryFn: async () => {
@@ -220,6 +224,7 @@ export const useGetProjectSecretsOverview = (
         includeImports,
         includeDynamicSecrets,
         includeSecretRotations,
+        includeMappingSecrets, // mapping secret
         environments
       });
 
@@ -242,6 +247,8 @@ export const useGetProjectSecretsOverview = (
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
       const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
 
+      const uniqueMappingSecrets = mappings ? unique(mappings, (i) => i.name) : [];
+
       return {
         ...select,
         secrets: secrets ? mergePersonalSecrets(secrets) : undefined,
@@ -251,11 +258,13 @@ export const useGetProjectSecretsOverview = (
             secrets: mergePersonalRotationSecrets(rotation.secrets)
           };
         }),
+        mappingSecrets: mappings,
         totalUniqueSecretsInPage: uniqueSecrets.length,
         totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
         totalUniqueFoldersInPage: uniqueFolders.length,
         totalUniqueSecretImportsInPage: uniqueSecretImports.length,
-        totalUniqueSecretRotationsInPage: uniqueSecretRotations.length
+        totalUniqueSecretRotationsInPage: uniqueSecretRotations.length,
+        totalUniqueMappingSecretsInPage: uniqueMappingSecrets.length
       };
     }, []),
     placeholderData: (previousData) => previousData
@@ -277,6 +286,7 @@ export const useGetProjectSecretsDetails = (
     includeImports,
     includeDynamicSecrets,
     includeSecretRotations,
+    includeMappingSecrets, // mapping secret
     tags
   }: TGetDashboardProjectSecretsDetailsDTO,
   options?: Omit<
@@ -315,6 +325,7 @@ export const useGetProjectSecretsDetails = (
       includeImports,
       includeDynamicSecrets,
       includeSecretRotations,
+      includeMappingSecrets, // mapping secret
       tags
     }),
     queryFn: async () => {
@@ -331,6 +342,7 @@ export const useGetProjectSecretsDetails = (
         includeFolders,
         includeImports,
         includeDynamicSecrets,
+        includeMappingSecrets,
         includeSecretRotations,
         tags
       });

@@ -101,7 +101,8 @@ import {
   useDynamicSecretOverview,
   useFolderOverview,
   useSecretOverview,
-  useSecretRotationOverview
+  useSecretRotationOverview,
+  useMappingSecretOverview
 } from "@app/hooks/utils";
 import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/OverviewPage/components/SecretOverviewSecretRotationRow";
 import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
@@ -124,17 +125,20 @@ import { SecretSearchInput } from "./components/SecretSearchInput";
 import { SecretTableResourceCount } from "./components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
-
+import { SecretOverviewMappingSecretRow } from "./components/SecretOverviewMappingSecretRow/SecretOverviewMappingSecretRow";
+import { TMappingSecret } from "@app/hooks/api";
 export enum EntryType {
   FOLDER = "folder",
-  SECRET = "secret"
+  SECRET = "secret",
+  MAPPING = "mapping"
 }
 
 enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
   Secret = "secret",
-  SecretRotation = "rotation"
+  SecretRotation = "rotation",
+  MappingSecret = "mapping"
 }
 
 type Filter = {
@@ -145,7 +149,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
   [RowType.DynamicSecret]: false,
   [RowType.Secret]: false,
-  [RowType.SecretRotation]: false
+  [RowType.SecretRotation]: false,
+  [RowType.MappingSecret]: false // mapping secret
 };
 
 const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -197,9 +202,11 @@ export const OverviewPage = () => {
     // selectedEntries[name/key][envSlug][resource]
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
+    [EntryType.MAPPING]: Record<string, Record<string, TMappingSecret>>;
   }>({
     [EntryType.FOLDER]: {},
-    [EntryType.SECRET]: {}
+    [EntryType.SECRET]: {},
+    [EntryType.MAPPING]: {}
   });
 
   const {
@@ -224,7 +231,8 @@ export const OverviewPage = () => {
   const resetSelectedEntries = useCallback(() => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
-      [EntryType.SECRET]: {}
+      [EntryType.SECRET]: {},
+      [EntryType.MAPPING]: {}
     });
   }, []);
 
@@ -290,7 +298,8 @@ export const OverviewPage = () => {
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       search: debouncedSearchFilter,
       limit,
-      offset
+      offset,
+      includeMappingSecrets: isFilteredByResources ? filter.mapping : true // mapping secrets
     },
     { enabled: isProjectV3 }
   );
@@ -300,6 +309,7 @@ export const OverviewPage = () => {
     folders,
     dynamicSecrets,
     secretRotations,
+    mappingSecrets, // mapping secret
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -315,6 +325,7 @@ export const OverviewPage = () => {
     usedBySecretSyncs
   } = overview ?? {};
 
+  console.log(overview);
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
@@ -342,6 +353,8 @@ export const OverviewPage = () => {
   const { dynamicSecretNames, isDynamicSecretPresentInEnv } =
     useDynamicSecretOverview(dynamicSecrets);
 
+  // mapping secret
+  const { mappingKeys, getMappingValue } = useMappingSecretOverview(mappingSecrets);
   const {
     secretRotationNames,
     isSecretRotationPresentInEnv,
@@ -614,6 +627,7 @@ export const OverviewPage = () => {
 
   const handleFolderClick = (path: string) => {
     // store for breadcrumb nav to restore previously used filters
+    console.log(filterHistory);
     setFilterHistory((prev) => {
       const curr = new Map(prev);
       curr.set(secretPath, { filter, searchFilter });
@@ -629,6 +643,22 @@ export const OverviewPage = () => {
       setFilter(DEFAULT_FILTER_STATE);
       setSearchFilter("");
       setDebouncedSearchFilter("");
+    });
+  };
+
+  const handleMappingSecretClick = (mappingId: string) => {
+    setFilterHistory((prev) => {
+      const curr = new Map(prev);
+      curr.set(secretPath, { filter, searchFilter });
+      return curr;
+    });
+
+    navigate({
+      to: "/projects/secret-management/$projectId/mapping-secrets/$mappingId",
+      params: {
+        projectId,
+        mappingId: mappingId,
+      }
     });
   };
 
@@ -1502,6 +1532,15 @@ export const OverviewPage = () => {
                         onDelete={(secretRotation) =>
                           handlePopUpOpen("deleteSecretRotation", secretRotation)
                         }
+                      />
+                    ))}
+                    {/* mapping secret */}
+                    {mappingKeys.map((mappingKey, index) => (
+                      <SecretOverviewMappingSecretRow
+                        mappingSecretKey={mappingKey}
+                        getMappingValue={getMappingValue}
+                        key={`overview-${mappingKey}-${index + 1}`}
+                        onClick={handleMappingSecretClick}
                       />
                     ))}
                     {secKeys.map((key, index) => (

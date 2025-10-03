@@ -54,3 +54,4 @@ export * from "./trustedIps";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workflowIntegrations";
+export * from "./mappingSecrets"; // mapping secret

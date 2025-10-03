@@ -19,6 +19,8 @@ export type TSecretFolder = {
   pendingAction?: PendingAction;
 };
 
+
+
 export type TSecretFolderWithPath = TSecretFolder & { path: string };
 
 export type TProjectEnvironmentsFolders = {

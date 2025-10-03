@@ -20,7 +20,8 @@ import { useProject, useProjectPermission } from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
-  useGetSecretRotations
+  useGetSecretRotations,
+  useGetMappingSecrets,
 } from "@app/hooks/api";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -47,6 +48,7 @@ export const SecretManagerLayout = () => {
       refetchOnMount: false
     }
   });
+
 
   const pendingRequestsCount =
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);

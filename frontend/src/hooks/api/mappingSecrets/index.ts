@@ -1,9 +1,2 @@
-// export {
-
-// } from "./mutations";
-export {
-  useGetMappingSecrets,
-  useGetMappingSecretsAllEnv,
-  // useGetSecretReferenceTree,
-  useGetMappingSecretVersion
-} from "./queries";
+export * from "./types";
+export { useGetMappingSecrets, useGetSecretAndMappingSecrets } from "./queries";

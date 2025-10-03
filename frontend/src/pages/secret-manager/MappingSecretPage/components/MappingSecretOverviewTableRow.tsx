@@ -9,7 +9,7 @@ import {
   faFileImport,
   faKey,
   faRotate,
-  faXmark 
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -26,8 +26,8 @@ import { ProjectEnv } from "@app/hooks/api/types";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
-import { SecretEditRow } from "./SecretEditRow";
-import SecretRenameRow from "./SecretRenameRow";
+import { SecretEditRow } from "../../OverviewPage/components/SecretOverviewTableRow/SecretEditRow";
+import SecretRenameRow from "../../OverviewPage/components/SecretOverviewTableRow/SecretRenameRow";
 
 type Props = {
   secretKey: string;
@@ -67,9 +67,10 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  folderName: string;
 };
 
-export const SecretOverviewTableRow = ({
+export const MappingSecretOverviewTableRow = ({
   secretKey,
   environments = [],
   secretPath,
@@ -82,12 +83,13 @@ export const SecretOverviewTableRow = ({
   scrollOffset,
   onToggleSecretSelect,
   isSelected,
-  importedBy
+  importedBy,
+  folderName
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
   const [isSecretVisible, setIsSecretVisible] = useToggle();
-
+  console.log(folderName);
   const { permission } = useProjectPermission();
 
   const getDefaultValue = (
@@ -138,6 +140,13 @@ export const SecretOverviewTableRow = ({
                 />
               </div>
               <div title={secretKey}>{secretKey}</div>
+            </div>
+          </div>
+        </Td>
+        <Td>
+          <div className="h-full w-full border-r border-mineshaft-600 px-5 py-2.5 text-center">
+            <div className="text-white">
+              <div>{folderName}</div>
             </div>
           </div>
         </Td>

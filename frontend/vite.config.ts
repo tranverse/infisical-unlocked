@@ -5,6 +5,7 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import topLevelAwait from "vite-plugin-top-level-await";
 import wasm from "vite-plugin-wasm";
 import tsconfigPaths from "vite-tsconfig-paths";
+import tailwindcss from "@tailwindcss/vite";
 
 const virtualRouteFileChangeReloadPlugin: PluginOption = {
   name: "watch-config-restart",
@@ -39,6 +40,7 @@ export default defineConfig(({ mode }) => {
       // }
     },
     plugins: [
+      tailwindcss(),
       tsconfigPaths(),
       nodePolyfills({
         globals: {

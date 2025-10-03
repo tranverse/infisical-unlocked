@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
 
-import { DashboardProjectSecretsOverview } from "@app/hooks/api/dashboard/types";
-
+import { DashboardProjectSecretsOverview } from "../api/dashboard/types";
+import { TGetSecretAndMappingSecretDTO } from "../api/mappingSecrets";
+import { TMappingSecret } from "../api/mappingSecrets";
 type FolderNameAndDescription = {
   name: string;
   description?: string;
@@ -140,4 +141,43 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
   );
 
   return { secKeys, getEnvSecretKeyCount };
+};
+export const useMappingSecretOverview = (
+  mappingSecrets: DashboardProjectSecretsOverview["mappingSecrets"] = []
+) => {
+  const mappingKeys = useMemo(() => {
+    return (mappingSecrets || []).map((secret) => secret.key).filter(Boolean);
+  }, [mappingSecrets]);
+
+  const getMappingValue = useCallback(
+    (key: string) => {
+      return mappingSecrets?.find((secret) => secret.key === key) ?? null;
+    },
+    [mappingSecrets]
+  );
+
+  return { mappingKeys, getMappingValue };
+};
+
+export const useSecretsAndMappingSecret = (data: TGetSecretAndMappingSecretDTO) => {
+  const secretsMap = useMemo(() => {
+    if (!data?.secrets) return {};
+    return data.secrets.reduce<Record<string, SecretV3RawSanitized>>((acc, secret) => {
+      if (secret.key) acc[secret.key] = secret;
+      return acc;
+    }, {});
+  }, [data?.secrets]);
+
+  const getSecretByKey = useCallback(
+    (key: string) => {
+      return secretsMap[key] ?? null;
+    },
+    [secretsMap]
+  );
+
+  return {
+    mappingSecret: data.mappingSecret,
+    secretsMap,
+    getSecretByKey
+  };
 };

@@ -235,7 +235,17 @@ export const fnSecretBulkUpdate = async ({
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
-      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata, secretMetadata, mappingId }
+      data: {
+        skipMultilineEncoding,
+        type,
+        key,
+        encryptedValue,
+        userId,
+        encryptedComment,
+        metadata,
+        secretMetadata,
+        mappingId
+      }
     }) => ({
       filter: { ...filter, folderId },
       data: {
@@ -811,6 +821,7 @@ export const reshapeBridgeSecret = (
     isRotatedSecret?: boolean;
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];
+    folderName?: string;
   },
   secretValueHidden: boolean
 ) => ({
@@ -843,6 +854,7 @@ export const reshapeBridgeSecret = (
   isRotatedSecret: secret.isRotatedSecret,
   rotationId: secret.rotationId,
   secretReminderRecipients: secret.secretReminderRecipients || [],
+  folderName: secret.folderName,
   ...(secretValueHidden
     ? {
         secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,

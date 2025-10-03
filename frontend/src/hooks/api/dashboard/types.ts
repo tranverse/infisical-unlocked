@@ -5,6 +5,7 @@ import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3Raw, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import { TMappingSecret, TSecret } from "../secretMapping/types";
 
 export type DashboardProjectSecretsOverviewResponse = {
   folders?: (TSecretFolder & { environment: string })[];
@@ -27,6 +28,7 @@ export type DashboardProjectSecretsOverviewResponse = {
   importedByEnvs?: { environment: string; importedBy: ProjectSecretsImportedBy[] }[];
   usedBySecretSyncs?: UsedBySecretSyncs[];
   totalUniqueSecretRotationsInPage: number;
+  mappingSecrets: TMappingSecret[];
 };
 
 export type UsedBySecretSyncs = {
@@ -105,6 +107,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeDynamicSecrets?: boolean;
   includeImports?: boolean;
   includeSecretRotations?: boolean;
+  includeMappingSecrets?: boolean; // mapping secret
   environments: string[];
 };
 

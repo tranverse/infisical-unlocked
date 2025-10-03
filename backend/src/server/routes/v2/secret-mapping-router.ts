@@ -34,16 +34,19 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           updateMappingSecret: mappingSecretSchema,
-          secrets: z.array(secretRawSchema)
+          secrets: z.array(
+            secretRawSchema.extend({
+              folderName: z.string().trim()
+            })
+          )
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secretOperation = await server.services.secretMapping.updateValueMappingSecret({
-        secretKey,
+        secretKey: req.params.secretKey,
         projectId: req.body.projectId,
-        key: req.body.key,
         value: req.body.value,
         newValue: req.body.newValue,
         environment: req.body.environment,
@@ -129,6 +132,53 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
 
       return {
         mappingSecrets: secret
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/all-secrets/:mappingId",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      description: "Get secrets and mapping secret",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        mappingId: z.string().trim()
+      }),
+      querystring: z.object({
+        projectId: z.string().trim()
+        // environment: z.string().trim() // thêm environment
+      }),
+      response: {
+        200: z.object({
+          mappingSecrets: mappingSecretSchema,
+          secrets: z.array(
+            secretRawSchema.extend({
+              folderName: z.string().trim()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const secrets = await server.services.secretMapping.getSecretsAndMappingSecretInProject({
+        projectId: req.query.projectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        mappingId: req.params.mappingId
+        // environment: req.params.environment
+      });
+
+      return {
+        mappingSecrets: secrets.returnMappingSecret,
+        secrets: secrets.returnSecrets
       };
     }
   });
