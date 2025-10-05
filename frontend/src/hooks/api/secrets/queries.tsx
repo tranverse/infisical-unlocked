@@ -24,7 +24,8 @@ import {
   TGetSecretReferenceTreeDTO,
   TGetSecretVersionValue,
   TSecretReferenceTraceNode,
-  TSecretVersionValue
+  TSecretVersionValue,
+  TGetSameValueSecretWithoutMappingDTO
 } from "./types";
 
 export const secretKeys = {
@@ -46,7 +47,8 @@ export const secretKeys = {
     secretKey
   }: TGetSecretAccessListDTO) =>
     ["secret-access-list", { projectId, environment, secretPath, secretKey }] as const,
-  getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto]
+  getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto],
+  getSecretVersionValue: (projectId: string) => ["secretVersionValue", projectId] as const
 };
 
 export const fetchProjectSecrets = async ({
@@ -331,6 +333,23 @@ const fetchSecretReferenceTree = async ({
   return data;
 };
 
+const fetchSameValueSecret = async ({ projectId }: TGetSameValueSecretWithoutMappingDTO) => {
+  const { data } = await apiRequest.get(`/api/v4/secrets/same-value/${projectId}`);
+  return data;
+};
+
+export const useGetSameValueSecretWithoutMappingSecret = ({
+  projectId,
+  options = {}
+}: TGetSameValueSecretWithoutMappingDTO & {
+  options?: Omit<UseQueryOptions<any, unknown, any, string[]>, "queryKey" | "queryFn">;
+}) =>
+  useQuery({
+    queryKey: secretKeys.getSecretVersionValue(projectId),
+    queryFn: () => fetchSameValueSecret({ projectId }),
+    ...options
+  });
+
 export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
   useQuery({
     enabled:
@@ -342,7 +361,4 @@ export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
     queryFn: () => fetchSecretReferenceTree(dto)
   });
 
-
-export const fetchMappingSecrets = async ({projectId}) => {
-
-}
+export const fetchMappingSecrets = async ({ projectId }) => {};

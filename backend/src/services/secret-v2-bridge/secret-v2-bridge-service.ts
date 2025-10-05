@@ -382,10 +382,8 @@ export const secretV2BridgeServiceFactory = ({
       const encryptedValue = secretManagerEncryptor({
         plainText: Buffer.from(inputSecretData.secretValue)
       }).cipherTextBlob;
-      // generate random key
       const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
-      // console.log("secretMappingKey: ", secretMappingKey)
-      // console.log("encryptedValue: ", encryptedValue)
+
       let allMappingSecrets = await secretMappingDAL.getAllSecretMappingInProject(projectId);
       console.log(allMappingSecrets);
       let mapSecret = null;
@@ -405,12 +403,7 @@ export const secretV2BridgeServiceFactory = ({
         });
         mappingId = newMappingSecret.id;
       }
-      // console.log("mappingSecret: ", mappingSecret)
 
-      // console.log("mappingId: ", mappingId)
-      // console.log("samevalue: ", sameValue)
-
-      // update value and mapping id
       for (const secret of sameValueSecrets) {
         const update = await secretDAL.updateMappingIdById(secret.secretId, mappingId);
         console.log("update:", update);
@@ -455,7 +448,6 @@ export const secretV2BridgeServiceFactory = ({
         },
         tx
       });
-      console.log("createdSecret:", createdSecret);
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return createdSecret;
     });
@@ -501,7 +493,8 @@ export const secretV2BridgeServiceFactory = ({
       {
         ...secret,
         value: inputSecret.secretValue,
-        comment: inputSecret.secretComment || ""
+        comment: inputSecret.secretComment || "",
+        mappingId: secret.mappingId
       },
       false
     );
@@ -626,10 +619,11 @@ export const secretV2BridgeServiceFactory = ({
       );
     }
     // encrypt value
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
     // check duplicate value in one service
     const allSecretInService = await secretDAL.getAllSecretValueInOneServiceAndExceptCurrentSecret(folderId, secretId);
     console.log("allSecretInService", allSecretInService);
@@ -640,10 +634,10 @@ export const secretV2BridgeServiceFactory = ({
           throw new BadRequestError({ message: "Secret with same value already exist in folder" });
         }
       }
-    }   
+    }
 
     const { secretName, secretValue } = inputSecret;
-   
+
     // check policy
     if (secretValue) {
       const project = await projectDAL.findById(projectId);
@@ -701,12 +695,12 @@ export const secretV2BridgeServiceFactory = ({
             const newSecretMappingKey = await secretMappingDAL.generateSecretMappingKey();
             let newMappingSecret = await secretMappingDAL.createSecretMapping({
               key: newSecretMappingKey,
-              value: encryptedValue
+              value: encryptedValue.encryptedValue
             });
             newMappingId = newMappingSecret.id;
-            console.log("id", sc.secretId)
+            console.log("id", sc.secretId);
             const up = await secretDAL.updateMappingIdById(sc.secretId, newMappingId);
-            console.log("up", up)
+            console.log("up", up);
           }
           break;
         }
@@ -1105,7 +1099,6 @@ export const secretV2BridgeServiceFactory = ({
             secretTags: secret.tags.map((i) => i.slug)
           }
         );
-
         return reshapeBridgeSecret(
           projectId,
           groupedFolderMappings[secret.folderId][0].environment,
@@ -1122,6 +1115,7 @@ export const secretV2BridgeServiceFactory = ({
           secretValueHidden
         );
       });
+    console.log("decryptedSecrets", decryptedSecrets);
 
     return decryptedSecrets;
   };
@@ -1355,11 +1349,13 @@ export const secretV2BridgeServiceFactory = ({
               : "",
             comment: secret.encryptedComment
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-              : ""
+              : "",
+            secretValue: secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
           },
           secretValueHidden && !isPersonalSecret
         );
       });
+    console.log("decryptedSecrets", decryptedSecrets);
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
@@ -3347,6 +3343,9 @@ export const secretV2BridgeServiceFactory = ({
     const secrets = await secretDAL.find({ folderId, $in: { [`${TableName.SecretV2}.key` as "key"]: keys } });
     return secrets.map((el) => ({ id: el.id, key: el.key }));
   };
+
+
+
 
   return {
     createSecret,

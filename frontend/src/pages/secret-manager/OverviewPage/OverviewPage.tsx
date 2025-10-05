@@ -127,6 +127,9 @@ import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection"
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import { SecretOverviewMappingSecretRow } from "./components/SecretOverviewMappingSecretRow/SecretOverviewMappingSecretRow";
 import { TMappingSecret } from "@app/hooks/api";
+import { SecretSameValueRow } from "./components/SecretSameValueRow";
+import { useGetSameValueSecretWithoutMappingSecret } from "@app/hooks/api/secrets/queries";
+
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
@@ -169,6 +172,7 @@ export const OverviewPage = () => {
       search: el.search
     })
   });
+  const [showSameValue, setShowSameValue] = useState(false);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
@@ -183,6 +187,9 @@ export const OverviewPage = () => {
   const [collapseEnvironments, setCollapseEnvironments] = useToggle(
     Boolean(localStorage.getItem("overview-collapse-environments"))
   );
+  const [isFormExpanded, setIsFormExpanded] = useToggle();
+
+  const [reshape, setReshape] = useState([]);
 
   const handleToggleNarrowHeader = () => {
     setCollapseEnvironments.toggle();
@@ -271,6 +278,7 @@ export const OverviewPage = () => {
 
   const [filteredEnvs, setFilteredEnvs] = useState<ProjectEnv[]>([]);
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
+  console.log(visibleEnvs);
 
   const {
     secretImports,
@@ -310,6 +318,7 @@ export const OverviewPage = () => {
     dynamicSecrets,
     secretRotations,
     mappingSecrets, // mapping secret
+    sameValueSecrets,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -325,7 +334,8 @@ export const OverviewPage = () => {
     usedBySecretSyncs
   } = overview ?? {};
 
-  console.log(overview);
+  console.log(secrets);
+  console.log("sameValueSecrets", sameValueSecrets);
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
@@ -511,7 +521,7 @@ export const OverviewPage = () => {
         secretComment: "",
         type: SecretType.Shared
       });
-
+      console.log(result);
       if ("approval" in result) {
         createNotification({
           type: "info",
@@ -522,6 +532,12 @@ export const OverviewPage = () => {
           type: "success",
           text: "Successfully created secret"
         });
+        if (result.secret?.mappingId) {
+          createNotification({
+            type: "info",
+            text: "A mapping secret was created for this value"
+          });
+        }
       }
     } catch (error) {
       console.log(error);
@@ -565,7 +581,7 @@ export const OverviewPage = () => {
         secretValue,
         type
       });
-
+      console.log(result);
       if ("approval" in result) {
         createNotification({
           type: "info",
@@ -657,7 +673,7 @@ export const OverviewPage = () => {
       to: "/projects/secret-management/$projectId/mapping-secrets/$mappingId",
       params: {
         projectId,
-        mappingId: mappingId,
+        mappingId: mappingId
       }
     });
   };
@@ -900,6 +916,7 @@ export const OverviewPage = () => {
     localStorage.getItem("overview-header-height") ?? DEFAULT_COLLAPSED_HEADER_HEIGHT.toString(),
     10
   );
+
   const { headerHeight, handleMouseDown, isResizing } = useResizableHeaderHeight({
     initialHeight: Number.isNaN(storedHeight) ? DEFAULT_COLLAPSED_HEADER_HEIGHT : storedHeight,
     minHeight: DEFAULT_COLLAPSED_HEADER_HEIGHT,
@@ -919,6 +936,15 @@ export const OverviewPage = () => {
       </div>
     );
   }
+
+  const handleSecretWithSameValue = () => {
+    navigate({
+      to: "/projects/secret-management/$projectId/secret-value",
+      params: {
+        projectId
+      }
+    });
+  };
 
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
   // This is needed to also show imports from other paths – right now those are missing.
@@ -1245,6 +1271,7 @@ export const OverviewPage = () => {
                   className="sticky top-0 z-20 border-0"
                   style={{ height: collapseEnvironments ? headerHeight : undefined }}
                 >
+                  {showSameValue && <Th>Value</Th>}
                   <Th
                     className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
                     style={{ height: collapseEnvironments ? headerHeight : undefined }}
@@ -1316,6 +1343,7 @@ export const OverviewPage = () => {
                       </Tooltip>
                     </div>
                   </Th>
+                  {showSameValue && <Th>Service</Th>}
                   {visibleEnvs?.map(({ name, slug }, index) => {
                     const envSecKeyCount = getEnvSecretKeyCount(slug);
                     const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
@@ -1433,6 +1461,7 @@ export const OverviewPage = () => {
                     className="bg-mineshaft-700"
                   />
                 )}
+
                 {userAvailableEnvs.length === 0 && (
                   <Tr>
                     <Td colSpan={visibleEnvs.length + 1}>
@@ -1535,14 +1564,15 @@ export const OverviewPage = () => {
                       />
                     ))}
                     {/* mapping secret */}
-                    {mappingKeys.map((mappingKey, index) => (
-                      <SecretOverviewMappingSecretRow
-                        mappingSecretKey={mappingKey}
-                        getMappingValue={getMappingValue}
-                        key={`overview-${mappingKey}-${index + 1}`}
-                        onClick={handleMappingSecretClick}
-                      />
-                    ))}
+                    {secretPath == "/" &&
+                      mappingKeys.map((mappingKey, index) => (
+                        <SecretOverviewMappingSecretRow
+                          mappingSecretKey={mappingKey}
+                          getMappingValue={getMappingValue}
+                          key={`overview-${mappingKey}-${index + 1}`}
+                          onClick={handleMappingSecretClick}
+                        />
+                      ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
@@ -1580,9 +1610,21 @@ export const OverviewPage = () => {
                 <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
                   <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
                     <div
-                      className="w-full border-r border-t border-mineshaft-600"
+                      className={twMerge(
+                        "flex w-full items-center border-r border-t border-mineshaft-600 p-4 text-sm italic"
+                      )}
                       style={{ height: "45px" }}
-                    />
+                    >
+                      {secretPath == "/" && sameValueSecrets?.length > 0 && (
+                        <p
+                          className="cursor-pointer text-yellow-300 underline hover:text-blue-400"
+                          style={{ fontSize: "13px" }}
+                          onClick={handleSecretWithSameValue}
+                        >
+                          View secret with same value
+                        </p>
+                      )}
+                    </div>
                   </Td>
                   {visibleEnvs?.map(({ name, slug }, i) => (
                     <Td

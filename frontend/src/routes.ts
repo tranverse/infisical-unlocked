@@ -44,16 +44,17 @@ const organizationRoutes = route("/organization", [
 ]);
 
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [
-  layout("secret-manager-layout", "secret-manager/layout.tsx", [
+  layout("secret-manager-layout", "secret-manager/layout.tsx", [  
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
     route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
     route("/mapping-secrets/$mappingId", "secret-manager/MappingSecretPage/route.tsx"), // mapping secret
+    route("/secret-value", "secret-manager/SameValueSecretPage/route.tsx"), // same value
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
-    route("/commits/$environment/$folderId", [
-      index("secret-manager/CommitsPage/route.tsx"),
+    route("/commits/$environment/$folderId", [  
+      index("secret-manager/CommitsPage/route.tsx"),  
       route("/$commitId", [
         index("secret-manager/CommitDetailsPage/route.tsx"),
         route(

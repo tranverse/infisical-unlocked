@@ -43,14 +43,17 @@ export const secretMappingServiceFactory = ({
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const mappingSecret = await secretMappingDAL.getAllSecretMappingInProject(projectId);
-    console.log(secretMappingDAL);
+    console.log("projectId", projectId);
+    console.log("mappingSecret", mappingSecret);
+
     const returnSecret = mappingSecret.map((secret) => {
+      console.log(secret.value)
       return {
         ...secret,
         value: secret.value ? secretManagerDecryptor({ cipherTextBlob: secret.value }).toString() : ""
       };
     });
-    console.log(returnSecret);
+    console.log("returnSecret", returnSecret);
 
     return returnSecret;
   };
@@ -85,7 +88,7 @@ export const secretMappingServiceFactory = ({
     };
 
     const returnSecrets = secrets.map((secret) => {
-      return reshapeBridgeSecret(projectId, secret.environment, secretPath, {
+      return reshapeBridgeSecret(projectId, secret.env, secretPath, {
         ...secret,
         value: secret.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
@@ -93,7 +96,10 @@ export const secretMappingServiceFactory = ({
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
           : "",
-        folderName: secret.folderName
+        folderName: secret.folderName,
+        env: secret.env,
+        secretKey: secret.secretKey,
+        secretPath: secretPath
       });
     });
     console.log("returnSecrets", returnSecrets);
@@ -152,7 +158,7 @@ export const secretMappingServiceFactory = ({
     );
     console.log("secrets", environment);
     const reshapedSecrets = secrets.map((secret) => {
-      return reshapeBridgeSecret(projectId, environment, secretPath, {
+      return reshapeBridgeSecret(projectId, secret.env, secretPath, {
         ...secret,
         value: secret.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
@@ -195,10 +201,7 @@ export const secretMappingServiceFactory = ({
 
     const mappingSecretToDelete = await secretMappingDAL.findById(mappingId);
     if (!mappingSecretToDelete) throw new NotFoundError({ message: "Mapping secret not found" });
-    console.log("secretMappingDAL", secretMappingDAL);
     const mappingSecret = await secretMappingDAL.deleteSecretMappingById(mappingId);
-    console.log("deltete", mappingSecret);
-
     return "Deleted";
   };
 

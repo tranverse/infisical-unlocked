@@ -71,8 +71,13 @@ export const secretMappingDALFactory = (db: TDbClient) => {
       .where(`${TableName.SecretV2}.mappingId`, secretMappingId)
       .update({ encryptedValue: value });
 
-    const secrets = await db(TableName.SecretV2).where(`${TableName.SecretV2}.mappingId`, secretMappingId);
-
+    const secrets = await db(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.mappingId`, secretMappingId)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .select(selectAllTableCols(TableName.SecretV2))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
+      .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
     return {
       updateMappingSecret,
       secrets
@@ -91,7 +96,7 @@ export const secretMappingDALFactory = (db: TDbClient) => {
       .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .select(selectAllTableCols(TableName.SecretV2))
-      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
       .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
 
     return {

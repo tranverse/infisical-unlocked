@@ -158,7 +158,9 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
           mappingSecrets: mappingSecretSchema,
           secrets: z.array(
             secretRawSchema.extend({
-              folderName: z.string().trim()
+              folderName: z.string().trim(),
+              env: z.string().trim(),
+              key: z.string().trim()
             })
           )
         })

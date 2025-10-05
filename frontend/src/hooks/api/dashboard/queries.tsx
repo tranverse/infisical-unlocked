@@ -188,8 +188,7 @@ export const useGetProjectSecretsOverview = (
   >
 ) => {
   const queryClient = useQueryClient();
-  const { data: mappings } = useGetMappingSecrets({ projectId });
-  console.log(mappings);
+
   return useQuery({
     ...options,
     // wait for all values to be available
@@ -241,13 +240,13 @@ export const useGetProjectSecretsOverview = (
       const uniqueFolders = select.folders ? unique(select.folders, (i) => i.name) : [];
 
       const uniqueDynamicSecrets = select.dynamicSecrets
-        ? unique(select.dynamicSecrets, (i) => i.name)
+        ? unique(select.dynamicSecrets, (i) => i.name)  
         : [];
 
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
       const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
 
-      const uniqueMappingSecrets = mappings ? unique(mappings, (i) => i.name) : [];
+      const uniqueMappingSecrets = select.mappingSecrets ? unique(select.mappingSecrets, (i) => i.id) : [];
 
       return {
         ...select,
@@ -258,7 +257,6 @@ export const useGetProjectSecretsOverview = (
             secrets: mergePersonalRotationSecrets(rotation.secrets)
           };
         }),
-        mappingSecrets: mappings,
         totalUniqueSecretsInPage: uniqueSecrets.length,
         totalUniqueDynamicSecretsInPage: uniqueDynamicSecrets.length,
         totalUniqueFoldersInPage: uniqueFolders.length,
@@ -296,7 +294,7 @@ export const useGetProjectSecretsDetails = (
       DashboardProjectSecretsDetails,
       ReturnType<typeof dashboardKeys.getProjectSecretsDetails>
     >,
-    "queryKey" | "queryFn"
+    "queryKey" | "queryFn"  
   >
 ) => {
   const queryClient = useQueryClient();

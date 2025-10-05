@@ -70,6 +70,7 @@ type Props = {
   folderName: string;
   projectId: string;
   userAvailableEnvs: [];
+  secrets: [];
 };
 
 export const MappingSecretOverviewTableRow = ({
@@ -88,7 +89,8 @@ export const MappingSecretOverviewTableRow = ({
   importedBy,
   folderName,
   projectId,
-  userAvailableEnvs
+  userAvailableEnvs,
+  secrets
 }: Props) => {
   const {
     secretImports,
@@ -128,7 +130,7 @@ export const MappingSecretOverviewTableRow = ({
     }
     return secret?.valueOverride || secret?.secretValue || importedSecret?.secret?.value || "";
   };
-
+  console.log(secrets)
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
@@ -168,7 +170,7 @@ export const MappingSecretOverviewTableRow = ({
           </div>
         </Td>
         {environments.map(({ slug }, i) => {
-          const secret = getSecretByKey(slug, secretKey, folderName);
+          const secret = getSecretByKey(slug, secretKey, folderName, secrets);
           console.log(secret);
 
           const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
@@ -253,7 +255,7 @@ export const MappingSecretOverviewTableRow = ({
                   </thead>
                   <tbody className="border-t-2 border-mineshaft-600">
                     {environments.map(({ name, slug }) => {
-                      const secret = getSecretByKey(slug, secretKey, folderName);
+                      const secret = getSecretByKey(slug, secretKey, folderName, secrets);
                       const isCreatable = !secret;
                       const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
                       const importedSecret = getImportedSecretByKey(slug, secretKey);

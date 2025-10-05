@@ -55,6 +55,8 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretDALFactory } from "./secret-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 
 // secret mapping
 import { TSecretMappingDALFactory } from "../secret-mapping/secret-mapping-dal";
@@ -97,29 +99,29 @@ import {
   TUpdateManySecretRawDTO,
   TUpdateSecretDTO,
   TUpdateSecretRawDTO,
-
+  TGetSecretWithSameValueWithoutMappingSecretDTO
 } from "./secret-types";
-import {
-  TCreateSecretMappingDTO
-} from "../secret-mapping/secret-mapping-types"
+import { TCreateSecretMappingDTO } from "../secret-mapping/secret-mapping-types";
 
 import { TSecretVersionDALFactory } from "./secret-version-dal";
 import { TSecretVersionTagDALFactory } from "./secret-version-tag-dal";
 import { secretMappingDALFactory } from "../secret-mapping/secret-mapping-dal";
+import { reshapeBridgeSecret } from "../secret-v2-bridge/secret-v2-bridge-fns";
 
 type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
   // secret mapping
-  secretMappingDAL: TSecretMappingDALFactory
-  // 
+  secretMappingDAL: TSecretMappingDALFactory;
+  //
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
   >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey" | "decryptWithRootKey">;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
@@ -143,8 +145,6 @@ type TSecretServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
-
-
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -169,7 +169,7 @@ export const secretServiceFactory = ({
   secretApprovalRequestService,
   licenseService,
   reminderService,
-
+  kmsService,
   // secret mapping
   secretMappingDAL
 }: TSecretServiceFactoryDep) => {
@@ -516,7 +516,7 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    console.log("secretNameaaaaa111", projectId)
+    console.log("secretNameaaaaa111", projectId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -1409,6 +1409,8 @@ export const secretServiceFactory = ({
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    console.log("pathpathpath", path);
+
     if (shouldUseSecretV2Bridge) {
       const { secrets, imports } = await secretV2BridgeService.getSecrets({
         projectId,
@@ -1429,7 +1431,6 @@ export const secretServiceFactory = ({
 
       return { secrets, imports };
     }
-
     if (!botKey)
       throw new NotFoundError({
         message: `Project bot for project with ID '${projectId}' not found. Please upgrade your project.`,
@@ -1674,7 +1675,6 @@ export const secretServiceFactory = ({
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const project = await projectDAL.findById(projectId);
 
-
     if (project.enforceCapitalization) {
       if (secretName !== secretName.toUpperCase()) {
         throw new BadRequestError({
@@ -1683,8 +1683,8 @@ export const secretServiceFactory = ({
         });
       }
     }
-    console.log("bot key", botKey)
-    console.log("shouldUseSecretV2Bridge", shouldUseSecretV2Bridge)
+    console.log("bot key", botKey);
+    console.log("shouldUseSecretV2Bridge", shouldUseSecretV2Bridge);
 
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
@@ -1735,57 +1735,59 @@ export const secretServiceFactory = ({
         secretReminderNote,
         skipMultilineEncoding,
         secretReminderRepeatDays,
-        secretMetadata,
+        secretMetadata
       });
       return { secret, type: SecretProtectionType.Direct as const };
     }
-    
+
     // case: use botkey
     if (!botKey)
       throw new NotFoundError({
         message: `Project bot for project with ID '${projectId}' not found. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
-    
+
     let secretKeyEncrypted = secretName;
     let secretValueEncrypted = secretValue;
-    let secretCommentEncrypted = ""
+    let secretCommentEncrypted = "";
 
     secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
-    plaintext: secretName,
-    key: botKey,
-    keySize: SymmetricKeySize.Bits128
-  });
+      plaintext: secretName,
+      key: botKey,
+      keySize: SymmetricKeySize.Bits128
+    });
     secretValueEncrypted = crypto
-    .encryption()
-    .symmetric()
-    .encrypt({
-      plaintext: secretValue || "",
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
-  secretCommentEncrypted = crypto
-    .encryption()
-    .symmetric()
-    .encrypt({
-      plaintext: secretComment || "",
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
-    console.log("Secret value:", secretValueEncrypted)
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: secretValue || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
+    secretCommentEncrypted = crypto
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: secretComment || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
+    console.log("Secret value:", secretValueEncrypted);
     // find secret mapping
     let mappingId = "";
-    const sameValueSecrets = await secretDAL.findSecretsWithSameValue(secretValueEncrypted)
-    
-    if(sameValueSecrets.length > 0){
-        const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
-        const mappingSecret = await secretMappingDAL.createSecretMapping({key: secretMappingKey, value: secretValueEncrypted})
-        mappingId = mappingSecret.id
+    const sameValueSecrets = await secretDAL.findSecretsWithSameValue(secretValueEncrypted);
 
+    if (sameValueSecrets.length > 0) {
+      const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
+      const mappingSecret = await secretMappingDAL.createSecretMapping({
+        key: secretMappingKey,
+        value: secretValueEncrypted
+      });
+      mappingId = mappingSecret.id;
 
-        for(const secret of sameValueSecrets){
-          await secretDAL.updateMappingIdById(secret.id, mappingId)
-        }
+      for (const secret of sameValueSecrets) {
+        await secretDAL.updateMappingIdById(secret.id, mappingId);
+      }
     }
 
     if (policy) {
@@ -1818,12 +1820,8 @@ export const secretServiceFactory = ({
         }
       });
 
-
-
       return { type: SecretProtectionType.Approval as const, approval };
     }
-
-
 
     // create new secret
     const secret = await createSecret({
@@ -1848,7 +1846,7 @@ export const secretServiceFactory = ({
       skipMultilineEncoding,
       secretReminderRepeatDays,
       secretReminderNote,
-      tags: tagIds,
+      tags: tagIds
 
       // mapping id
       // mappingId
@@ -2074,7 +2072,7 @@ export const secretServiceFactory = ({
     type,
     secretPath
   }: TDeleteSecretRawDTO) => {
-            console.log("secretNameaaaaa", secretName)
+    console.log("secretNameaaaaa", secretName);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
@@ -2540,7 +2538,7 @@ export const secretServiceFactory = ({
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
-    console.log("projectidaaa", projectId)
+    console.log("projectidaaa", projectId);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
       actor === ActorType.USER
@@ -3558,6 +3556,66 @@ export const secretServiceFactory = ({
       secretValue: v.secretValue
     }));
   };
+  const getSecretWithSameValueWithoutMappingSecret = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetSecretWithSameValueWithoutMappingSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const secrets = await secretDAL.getSecretsWithoutMappingIdInProject(projectId);
+
+    const sameValue: any[] = [];
+    const valueMap = new Map<string, any[]>();
+
+    for (const sec of secrets) {
+      const value = secretManagerDecryptor({ cipherTextBlob: sec.encryptedValue }).toString();
+      if (!valueMap.has(value) && !valueMap.has()) {
+        valueMap.set(value, []);
+      }
+      valueMap.get(value)!.push(sec);
+    }
+
+    console.log(valueMap);
+
+    for (const [value, group] of valueMap.entries()) {
+      if (group.length > 1) {
+        sameValue.push(...group);
+      }
+    }
+    console.log(sameValue);
+
+    const returnSecrets = sameValue.map((secret) => {
+      return reshapeBridgeSecret(projectId, secret.env, secret.folderName, {
+        ...secret,
+        value: secret.encryptedValue
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+          : "",
+        comment: secret.encryptedComment
+          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+          : "",
+        folderName: secret.folderName,
+        env: secret.env,
+        secretKey: secret.secretKey,
+        secretPath: secret.folderName
+      });
+    });
+    console.log("returnSecrets", returnSecrets);
+    return returnSecrets;
+  };
 
   return {
     attachTags,
@@ -3591,6 +3649,7 @@ export const secretServiceFactory = ({
     getSecretByIdRaw,
     getAccessibleSecrets,
     getSecretVersionsV2ByIds,
-    getChangeVersions
+    getChangeVersions,
+    getSecretWithSameValueWithoutMappingSecret
   };
 };

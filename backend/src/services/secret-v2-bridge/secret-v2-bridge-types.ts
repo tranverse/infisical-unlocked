@@ -31,6 +31,8 @@ export enum SecretUpdateMode {
   FailOnNotFound = "failOnNotFound"
 }
 
+
+
 export type TGetSecretsDTO = {
   expandSecretReferences?: boolean;
   path: string;
@@ -82,7 +84,7 @@ export type TCreateSecretDTO = TProjectPermission & {
   secretReminderNote?: string | null;
   secretMetadata?: ResourceMetadataDTO;
   // mapping
-  mappingId?: string | null
+  mappingId?: string | null;
 };
 
 export type TUpdateSecretDTO = TProjectPermission & {

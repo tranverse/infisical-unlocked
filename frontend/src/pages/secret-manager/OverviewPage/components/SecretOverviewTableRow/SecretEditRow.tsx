@@ -128,6 +128,7 @@ export const SecretEditRow = ({
         isOverride
       };
 
+  console.log(fetchSecretValueParams);
   // scott: only fetch value if secret exists, has non-empty value and user has permission
   const canFetchValue = Boolean(importedSecret ?? secretId) && !isEmpty && !secretValueHidden;
 
@@ -138,7 +139,6 @@ export const SecretEditRow = ({
   } = useGetSecretValue(fetchSecretValueParams, {
     enabled: canFetchValue && (isVisible || isFieldFocused)
   });
-
   const isFetchingSecretValue = canFetchValue && isPendingSecretValueData;
   const isSecretValueFetched = Boolean(secretValueData);
 
@@ -154,13 +154,14 @@ export const SecretEditRow = ({
       value: secretValueData?.valueOverride ?? secretValueData?.value ?? (defaultValue || null)
     }
   });
+  console.log("secretValueData", secretValueData);
 
   useEffect(() => {
     if (secretValueData && !isDirty) {
       setValue("value", secretValueData.valueOverride ?? secretValueData.value);
     }
   }, [secretValueData]);
-
+  console.log("secretValueData", secretValueData);
   const { permission } = useProjectPermission();
 
   const [isDeleting, setIsDeleting] = useToggle();

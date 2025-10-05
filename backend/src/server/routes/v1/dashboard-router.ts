@@ -18,7 +18,8 @@ import {
   booleanSchema,
   SanitizedDynamicSecretSchema,
   SanitizedTagSchema,
-  secretRawSchema
+  secretRawSchema,
+  mappingSecretSchema
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -125,16 +126,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .array()
             .optional(),
           secrets: secretRawSchema
-            .omit({ secretValue: true })
+            // .omit({ secretValue: true })
             .extend({
               isEmpty: z.boolean(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SanitizedTagSchema.array().optional()
+              tags: SanitizedTagSchema.array().optional(),
+              secretValue: z.string(),
+              secretKey: z.string()
             })
             .array()
             .optional(),
+          mappingSecrets: z.array(mappingSecretSchema),
+          sameValueSecrets: z.array(
+            secretRawSchema.extend({
+              folderName: z.string(),
+              env: z.string()
+            })
+          ),
           imports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
               importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
@@ -232,12 +242,33 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
         | undefined;
 
+      // mapping secret
+
+      let mappingSecrets:
+        | Awaited<ReturnType<typeof server.services.secretMapping.getMappingSecretsInProject>>
+        | undefined;
+      let sameValueSecrets: Awaited<ReturnType<typeof server.services.secret.getMappingSecretsInProject>> | undefined;
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
       let totalSecretCount: number | undefined;
       let totalImportCount: number | undefined;
       let totalSecretRotationCount: number | undefined;
 
+      mappingSecrets = await server.services.secretMapping.getMappingSecretsInProject({
+        projectId: projectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      sameValueSecrets = await server.services.secret.getSecretWithSameValueWithoutMappingSecret({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+        // environment: req.params.environment
+      });
       if (includeImports) {
         totalImportCount = await server.services.secretImport.getProjectImportMultiEnvCount({
           actorId: req.permission.id,
@@ -542,6 +573,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       return {
         folders,
         dynamicSecrets,
+        mappingSecrets, // mapping secrets
         secrets,
         imports,
         secretRotations,

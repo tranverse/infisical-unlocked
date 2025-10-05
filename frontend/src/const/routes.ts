@@ -82,6 +82,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/projects/secret-management/$projectId/mapping-secrets/$mappingId",
       "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId"
     ),
+    SameValueSecretPage: setRoute(
+      "/projects/secret-management/$projectId/secret-value",
+      "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secret-value"
+    ),
     RollbackPreviewPage: setRoute(
       "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
       "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"

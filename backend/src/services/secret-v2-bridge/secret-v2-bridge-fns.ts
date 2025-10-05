@@ -822,6 +822,10 @@ export const reshapeBridgeSecret = (
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];
     folderName?: string;
+    mappingId?: string;
+    env?: string;
+    key?: string;
+    secretKey?: string;
   },
   secretValueHidden: boolean
 ) => ({
@@ -829,6 +833,9 @@ export const reshapeBridgeSecret = (
   secretPath,
   workspace: workspaceId,
   environment,
+  env: secret.env,
+  key: secret.key,
+  value: secret.value,
   secretComment: secret.comment || "",
   version: secret.version,
   type: secret.type,
@@ -855,6 +862,7 @@ export const reshapeBridgeSecret = (
   rotationId: secret.rotationId,
   secretReminderRecipients: secret.secretReminderRecipients || [],
   folderName: secret.folderName,
+  mappingId: secret.mappingId,
   ...(secretValueHidden
     ? {
         secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,

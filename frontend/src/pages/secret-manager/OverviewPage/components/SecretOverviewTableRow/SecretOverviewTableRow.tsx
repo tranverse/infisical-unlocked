@@ -9,7 +9,7 @@ import {
   faFileImport,
   faKey,
   faRotate,
-  faXmark 
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -143,9 +143,9 @@ export const SecretOverviewTableRow = ({
         </Td>
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
-
+          console.log(secret);
           const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
-
+          console.log(isSecretImported);
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.isEmpty;
           return (

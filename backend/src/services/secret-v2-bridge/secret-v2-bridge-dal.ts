@@ -1020,6 +1020,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     return secrets;
   };
 
+
+
   return {
     ...secretOrm,
     update,
@@ -1045,6 +1047,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     getSecretsByMappingIdAndNotInSecretId,
     getSecretsByMappingId,
     getAllSecretValueInOneService,
-    getAllSecretValueInOneServiceAndExceptCurrentSecret
+    getAllSecretValueInOneServiceAndExceptCurrentSecret,
   };
 };

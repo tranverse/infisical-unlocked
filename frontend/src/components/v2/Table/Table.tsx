@@ -48,7 +48,7 @@ export type THeadProps = {
 
 export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
   <thead
-    className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}
+    className={twMerge("bg-mineshaft-800 text-xs  text-bunker-300", className)}
     style={style}
   >
     {children}
@@ -61,7 +61,7 @@ export type TFootProps = {
 };
 
 export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
-  <tfoot className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}>
+  <tfoot className={twMerge("bg-mineshaft-800 text-xs  text-bunker-300", className)}>
     {children}
   </tfoot>
 );

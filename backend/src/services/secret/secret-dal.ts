@@ -392,24 +392,18 @@ export const secretDALFactory = (db: TDbClient) => {
     return secrets;
   }
 
-  const updateMappingIdById = async (tx?: Knex | null, secretId: string, mappingId: string) => {
-    // return await db(TableName.SecretV2).columnInfo();
-    // try {
-    //   console.log("updateMappingIdById called", secretId, mappingId);
-    //   const secret = await db(TableName.SecretV2)
-    //     .where(`${TableName.SecretV2}.id`, secretId.trim())
-    //     .update({mappingId: mappingId})
-    //     .increment("version", 1)
-    //     .returning("*")
-    //     .debug(true); 
-    //   console.log("Update result:", secret);
-    //   return secret;
-    // } catch (error) {
-    //   console.error("Error in updateMappingIdById:", error);
-    //   throw new DatabaseError({ error, name: "update mapping id" });
-    // }
+  const getSecretsWithoutMappingIdInProject = async (projectId: string) => {
+    const secrets = await db
+      .replicaNode()(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.mappingId`, null)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .where(`${TableName.Environment}.projectId`, projectId)
+      .select(selectAllTableCols(TableName.SecretV2))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
+      .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
+    return secrets;
   };
-
 
   return {
     ...secretOrm,
@@ -427,7 +421,7 @@ export const secretDALFactory = (db: TDbClient) => {
     findAllProjectSecretValues,
     findManySecretsWithTags,
     findSecretsWithSameValue,
-    updateMappingIdById
+    getSecretsWithoutMappingIdInProject
   };
 
 

@@ -51,7 +51,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.Secrets],
       description: "List secrets",
-      security: [   
+      security: [
         {
           bearerAuth: []
         }
@@ -138,7 +138,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretPath: z.string().optional(),
               secretValueHidden: z.boolean(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SanitizedTagSchema.array().optional()
+              tags: SanitizedTagSchema.array().optional(),
+              value: z.string(),
+              secretValue: z.string()
             })
             .array(),
           imports: z
@@ -420,7 +422,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.union([
           z.object({
-            secret: secretRawSchema
+            secret: secretRawSchema.extend({
+              mappingId: z.string().nullable().optional()
+            })
           }),
           z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
         ])
@@ -1334,7 +1338,44 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  server.route({
+    method: "GET",
+    url: "/same-value/:projectId",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      description: "Get secrets with same value",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          sameValueSecret: z.array(
+            secretRawSchema.extend({
+              folderName: z.string(),
+              env: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const sameValueSecret = await server.services.secret.getSecretWithSameValueWithoutMappingSecret({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+        // environment: req.params.environment
+      });
 
-
+      return {
+        sameValueSecret
+      };
+    }
+  });
 };
-   

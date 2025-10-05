@@ -31,34 +31,6 @@ const fetchSecretsAndMappingSecret = async ({
   return { mappingSecret: data.mappingSecrets, secrets: data.secrets };
 };
 
-// const mappingSecretKeys = {
-//   list: ({ projectId }: TGetMappingSecretDTO) => [{ projectId }, "mapping-secrets"] as const
-// };
-
-// const mappingSecretKeys = {
-//   all: ["mapping-secrets"] as const,
-//   list: ({ projectId }: TGetMappingSecretDTO) =>
-//     [...mappingSecretKeys.all, "list", projectId] as const,
-//   detail: ({ projectId, mappingId }: TGetSecretAndMappingSecretDTO) =>
-//     [...mappingSecretKeys.all, "detail", projectId, mappingId] as const,
-//   getProjectSecretImports: ({ environment, projectId, path }: TGetSecretAndMappingSecretDTO) =>
-//     [{ projectId, path, environment }, "secrets-imports"] as const,
-
-//   getSecretImportSecrets: ({
-//     environment,
-//     projectId,
-//     path
-//   }: Omit<TGetImportedSecrets, "decryptFileKey">) =>
-//     [{ environment, path, projectId }, "secrets-import-sec"] as const,
-
-//   getImportedFoldersByEnv: ({ environment, projectId, path }: TGetImportedFoldersByEnvDTO) =>
-//     [{ environment, projectId, path }, "imported-folders"] as const,
-
-//   getImportedFoldersAllEnvs: ({ projectId, path, environment }: TGetImportedFoldersByEnvDTO) =>
-//     [{ projectId, path, environment }, "imported-folders-all-envs"] as const
-// };
-// queries.ts
-
 export const mappingSecretKeys = {
   all: ["mapping-secrets"] as const,
 
@@ -107,25 +79,25 @@ export const useGetMappingSecrets = ({
   });
 };
 
-export const useGetSecretAndMappingSecrets = ({
-  projectId,
-  mappingId,
-  options = {}
-}: TGetSecretAndMappingSecretDTO & {
-  option?: Omit<
-    UseQueryOptions<
-      { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
-      unknown,
-      { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
-      ReturnType<typeof mappingSecretKeys.detail>
-    >,
-    "queryKey" | "queryFn"
-  >;
-}) => {
-  return useQuery({
-    ...options,
-    queryKey: mappingSecretKeys.detail({ projectId, mappingId }),
-    enabled: Boolean(projectId) && Boolean(mappingId) && (options?.enabled ?? true),
-    queryFn: async () => fetchSecretsAndMappingSecret({ projectId, mappingId })
-  });
-};
+  export const useGetSecretAndMappingSecrets = ({
+    projectId,
+    mappingId,
+    options = {}
+  }: TGetSecretAndMappingSecretDTO & {
+    option?: Omit<
+      UseQueryOptions<
+        { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
+        unknown,
+        { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
+        ReturnType<typeof mappingSecretKeys.detail>
+      >,
+      "queryKey" | "queryFn"
+    >;
+  }) => {
+    return useQuery({
+      ...options,
+      queryKey: mappingSecretKeys.detail({ projectId, mappingId }),
+      enabled: Boolean(projectId) && Boolean(mappingId) && (options?.enabled ?? true),
+      queryFn: async () => fetchSecretsAndMappingSecret({ projectId, mappingId })
+    });
+  };

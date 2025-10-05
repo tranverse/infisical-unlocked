@@ -17,6 +17,9 @@ export type SecretReminderRecipient = {
   };
   id: string;
 };
+export type TGetSameValueSecretWithoutMappingDTO = {
+  projectId: string;
+};
 
 // both personal and shared secret stitched together for dashboard
 export type SecretV3RawSanitized = {
@@ -255,9 +258,8 @@ export type TGetSecretReferenceTreeDTO = {
 };
 
 export type TGetMappingSecretDTO = {
-  projectId: string,
-  
-}
+  projectId: string;
+};
 
 export type TSecretReferenceTraceNode = {
   key: string;

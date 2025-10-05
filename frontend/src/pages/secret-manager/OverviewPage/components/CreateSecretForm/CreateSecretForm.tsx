@@ -143,12 +143,34 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
       });
     }
 
+    // if (updatedEnvs.length) {
+    //   createNotification({
+    //     type: "success",
+    //     text: `Secrets created in ${
+    //       updatedEnvs.length > 1 ? "environments" : "environment"
+    //     }: ${updatedEnvs.join(", ")}`
+    //   });
+    // }
     if (updatedEnvs.length) {
       createNotification({
         type: "success",
         text: `Secrets created in ${
           updatedEnvs.length > 1 ? "environments" : "environment"
         }: ${updatedEnvs.join(", ")}`
+      });
+
+      results.forEach((result) => {
+        console.log(result);
+        if (
+          result.status === "fulfilled" &&
+          "secret" in result.value &&
+          result.value.secret?.mappingId
+        ) {
+          createNotification({
+            type: "info",
+            text: `A mapping secret was created in environment ${result.value.environment}`
+          });
+        }
       });
     }
 

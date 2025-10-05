@@ -30,7 +30,9 @@ type TPartialSecret = Pick<TSecrets, "id" | "secretReminderRepeatDays" | "secret
 type TPartialInputSecret = Pick<TSecrets, "type" | "secretReminderNote" | "secretReminderRepeatDays" | "id"> & {
   secretReminderRecipients?: string[] | null;
 };
-
+export type TGetSecretWithSameValueWithoutMappingSecretDTO = TProjectPermission & {
+  projectId: string;
+};
 export const FailedIntegrationSyncEmailsPayloadSchema = z.object({
   projectId: z.string(),
   secretPath: z.string(),

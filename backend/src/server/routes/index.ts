@@ -1398,7 +1398,8 @@ export const registerRoutes = async (
     licenseService,
     reminderService,
     secretMappingDAL, // secret mapping
-    secretMappingService
+    secretMappingService,
+    kmsService
   });
 
   const secretSharingService = secretSharingServiceFactory({

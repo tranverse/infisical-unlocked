@@ -34,7 +34,8 @@ import {
   Th,
   THead,
   Tooltip,
-  Tr
+  Tr,
+  DeleteActionModal
 } from "@app/components/v2";
 import {
   faAngleDown,
@@ -142,9 +143,22 @@ const Page = () => {
   const params = useParams({
     strict: false
   });
+  const { currentProject } = useProject();
+  // get mapping secret and secret
+  const { data: secrets } = useGetSecretAndMappingSecrets({
+    projectId: currentProject.id,
+    mappingId: params.mappingId
+  });
+  const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp(["editSecret"]);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const toggleModal = useCallback(() => {
+    setIsModalOpen((prev) => !prev);
+  }, []);
+  console.log(secrets);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
-
+  const [showSameValue, setShowSameValue] = useState(false);
+  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.MappingSecretPage.path });
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
@@ -157,7 +171,6 @@ const Page = () => {
   });
 
   const [totalCount, setTotalCount] = useState(0);
-  const { currentProject } = useProject();
   const tableRef = useRef<HTMLDivElement>(null);
   const [collapseEnvironments, setCollapseEnvironments] = useToggle(
     Boolean(localStorage.getItem("overview-collapse-environments"))
@@ -165,7 +178,9 @@ const Page = () => {
   const routerQueryParams = useSearch({
     from: ROUTE_PATHS.SecretManager.MappingSecretPage.id
   });
-  const secretPath = (routerQueryParams.secretPath as string) || "/";
+  console.log(routerQueryParams);
+  const secretPath = secrets?.mappingSecret?.key || "/";
+  console.log(secretPath);
   const userAvailableEnvs = currentProject?.environments || [];
 
   const {
@@ -178,6 +193,8 @@ const Page = () => {
     path: secretPath,
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
+  const { secKeys, getEnvSecretKeyCount } = useSecretOverview(secrets?.secrets || []);
+
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
@@ -185,10 +202,6 @@ const Page = () => {
   const [filteredEnvs, setFilteredEnvs] = useState<ProjectEnv[]>([]);
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
 
-  const { data: secrets } = useGetSecretAndMappingSecrets({
-    projectId: currentProject.id,
-    mappingId: params.mappingId
-  });
   const handleIsImportedSecretPresentInEnv = (envSlug: string, secretName: string) => {
     if (secrets?.secrets?.some((s) => s.key === secretName && s.env === envSlug)) {
       return false;
@@ -198,7 +211,51 @@ const Page = () => {
     }
     return isImportedSecretPresentInEnv(envSlug, secretName);
   };
+  const handleSecretUpdate = async (
+    env: string,
+    key: string,
+    value: string,
+    secretValueHidden: false,
+    type = SecretType.Shared
+  ) => {
+    let secretValue: string | undefined = value;
 
+    if (
+      secretValueHidden &&
+      (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
+    ) {
+      secretValue = undefined;
+    }
+
+    try {
+      const result = await updateSecretV3({
+        environment: env,
+        projectId,
+        secretPath,
+        secretKey: key,
+        secretValue,
+        type
+      });
+      console.log(result);
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully updated secret"
+        });
+      }
+    } catch (error) {
+      console.log(error);
+      createNotification({
+        type: "error",
+        text: "Failed to update secret"
+      });
+    }
+  };
   const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
   const storedHeight = Number.parseInt(
@@ -210,9 +267,12 @@ const Page = () => {
     minHeight: DEFAULT_COLLAPSED_HEADER_HEIGHT,
     maxHeight: 288
   });
-  const { secKeys, getEnvSecretKeyCount } = useSecretOverview(secrets?.secrets || []);
 
-  console.log(secretPath);
+  const filteredSecrets = secrets?.secrets?.filter(
+    (s, index, self) =>
+      index === self.findIndex((t) => t.secretKey === s.secretKey && t.folderName === s.folderName)
+  );
+
   const handleResetSearch = (path: string) => {
     const restore = filterHistory.get(path);
     setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
@@ -225,8 +285,10 @@ const Page = () => {
   const isTableEmpty = totalCount === 0;
 
   const getSecretByKey = useCallback(
-    (env: string, key: string) => {
-      const sec = secrets?.secrets?.find((s) => s.env === env && s.key === key);
+    (env: string, key: string, folderName: string) => {
+      const sec = secrets?.secrets?.find(
+        (s) => s.env === env && s.key === key && s.folderName === folderName
+      );
       return sec;
     },
     [secrets?.secrets]
@@ -239,7 +301,7 @@ const Page = () => {
 
   const updateMappingSecret = useUpdateMappingSecret();
 
-  const handleSave = (mappingKey: string, oldValue: string) => {
+  const handleSave = (mappingKey: string, oldValue: string, mappingId: string) => {
     try {
       updateMappingSecret.mutate({
         secretKey: mappingKey,
@@ -247,7 +309,8 @@ const Page = () => {
         value: oldValue,
         projectId: currentProject.id,
         secretPath: "/",
-        newValue: editedValue
+        newValue: editedValue,
+        mappingId: mappingId
       });
 
       createNotification({
@@ -258,25 +321,30 @@ const Page = () => {
   };
   const deleteMappingSecretMutation = useDeleteMappingSecret();
 
-  const handleDeleteMappingSecret = (mappingId: string) => {
-    deleteMappingSecretMutation.mutate(
-      { mappingId: mappingId, projectId: currentProject.id },
-      {
-        onSuccess: () => {
-          createNotification({
-            text: "Mapping secret deleted successfully",
-            type: "success"
-          });
-          navigate("/projects/secret-management/$projectId/_secret-manager-layout/overview");
-        },
-        onError: (error) => {
-          createNotification({
-            text: "Failed to delete mapping secret",
-            type: "error"
-          });
+  const handleDeleteMappingSecret = async (mappingId: string) => {
+    setIsModalOpen(false);
+
+    try {
+      await deleteMappingSecretMutation.mutateAsync({
+        mappingId,
+        projectId: currentProject.id
+      });
+      createNotification({
+        text: "Mapping secret deleted successfully",
+        type: "success"
+      });
+      navigate({
+        to: "/projects/secret-management/$projectId/overview",
+        params: {
+          projectId: currentProject.id
         }
-      }
-    );
+      });
+    } catch (error) {
+      createNotification({
+        text: `Failed to delete mapping secret: ${error}`,
+        type: "error"
+      });
+    }
   };
 
   return (
@@ -360,9 +428,11 @@ const Page = () => {
 
             <TBody>
               {secrets?.mappingSecret && (
-                <Tr className="hover:bg-gray-800">
+                <Tr className="text-center hover:bg-gray-800">
                   {/* Reference Key */}
-                  <Td className="p-2 text-sm text-white">{secrets.mappingSecret.key || "—"}</Td>
+                  <Td className="p-2 text-sm text-white">
+                    <div className="text-center">{secrets.mappingSecret.key || "—"}</div>
+                  </Td>
                   <Td>
                     <input
                       type="text"
@@ -372,24 +442,32 @@ const Page = () => {
                     />
                   </Td>
 
-                  <Td className="flex items-center justify-center gap-2 p-2 text-center text-sm">
-                    {editedValue !== secrets.mappingSecret.value && (
-                      <>
-                        <FontAwesomeIcon
-                          icon={faCheck}
-                          className="cursor-pointer text-white"
-                          onClick={() =>
-                            handleSave(secrets.mappingSecret.key, secrets.mappingSecret.id)
-                          }
-                        />
-                      </>
-                    )}
+                  <Td className="">
+                    <div className="flex h-full items-center justify-center gap-4 p-2 text-center text-sm">
+                      {editedValue !== secrets.mappingSecret.value && (
+                        <>
+                          <FontAwesomeIcon
+                            icon={faCheck}
+                            sise="md"
+                            className="cursor-pointer text-white"
+                            onClick={() =>
+                              handleSave(
+                                secrets.mappingSecret.key,
+                                secrets.mappingSecret.value,
+                                secrets.mappingSecret.id
+                              )
+                            }
+                          />
+                        </>
+                      )}
 
-                    <FontAwesomeIcon
-                      icon={faTrash}
-                      className="cursor-pointer text-white"
-                      onClick={() => handleDeleteMappingSecret(secrets.mappingSecret.id)}
-                    />
+                      <FontAwesomeIcon
+                        icon={faTrash}
+                        size="md"
+                        className="cursor-pointer text-white"
+                        onClick={toggleModal}
+                      />
+                    </div>
                   </Td>
                 </Tr>
               )}
@@ -405,7 +483,7 @@ const Page = () => {
         >
           <Table>
             <THead
-              className="sticky top-0 z-20"
+              className="sticky top-0 z-20 text-center"
               style={{ height: collapseEnvironments ? headerHeight : undefined }}
             >
               <Tr
@@ -423,14 +501,7 @@ const Page = () => {
                     )}
                   ></div>
                 </Th>
-                <Th
-                  className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
-                  style={{ height: collapseEnvironments ? headerHeight : undefined }}
-                >
-                  <div className="flex h-full border-b border-mineshaft-600 pb-3 pl-3 pr-5 text-center">
-                    Serivce
-                  </div>
-                </Th>
+                <Th>Service</Th>
                 {visibleEnvs?.map(({ name, slug }, index) => {
                   const envSecKeyCount = getEnvSecretKeyCount(slug);
                   const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
@@ -542,16 +613,16 @@ const Page = () => {
             <TBody>
               {visibleEnvs.length > 0 && (
                 <>
-                  {secrets?.secrets?.map((key, index) => (
+                  {filteredSecrets?.map((key, index) => (
                     <MappingSecretOverviewTableRow
                       isSelected={Boolean(selectedEntries.secret[key])}
                       onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
-                      secretPath={secretPath}
-                      getImportedSecretByKey={getImportedSecretByKey}
-                      isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
+                      secretPath={key.folderName == "root" ? "/" : "/" + key.folderName}
+                      // getImportedSecretByKey={getImportedSecretByKey}
+                      // isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                       // onSecretCreate={handleSecretCreate}
                       // onSecretDelete={handleSecretDelete}
-                      // onSecretUpdate={handleSecretUpdate}
+                      onSecretUpdate={handleSecretUpdate}
                       key={`overview-${key}-${index + 1}`}
                       environments={visibleEnvs}
                       secretKey={key.secretKey}
@@ -559,6 +630,8 @@ const Page = () => {
                       scrollOffset={debouncedScrollOffset}
                       // importedBy={importedBy}
                       folderName={key?.folderName}
+                      projectId={currentProject.id}
+                      userAvailableEnvs={userAvailableEnvs}
                     />
                   ))}
                 </>
@@ -592,6 +665,13 @@ const Page = () => {
             onChangePerPage={handlePerPageChange}
           />
         )}
+        <DeleteActionModal
+          isOpen={isModalOpen}
+          onClose={toggleModal}
+          title="Do you want to delete the mapping selected secret?"
+          deleteKey={secrets?.mappingSecret?.key}
+          onDeleteApproved={() => handleDeleteMappingSecret(secrets?.mappingSecret?.id)}
+        />
       </div>
     </div>
   );
