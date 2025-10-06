@@ -33,9 +33,20 @@ export type TUpdateMappingSecretDTO = {
   environment: string;
   projectId: string;
   secretPath: string;
+  mappingId: string;
+  secretData: {
+    mappingSecret: any;
+    secrets: any[];
+  };
 };
 
 export type TDeleteMappingSecretDTO = {
   mappingId: string;
+  projectId: string;
+};
+
+export type TCreateMappingSecretDTO = {
+  value: string;
+  secrets: [];
   projectId: string;
 };

@@ -9,6 +9,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 
 import {
   Button,
@@ -48,6 +49,7 @@ import {
   faFingerprint,
   faFolder,
   faFolderBlank,
+  faBan,
   faFolderPlus,
   faKey,
   faPlus,
@@ -144,6 +146,8 @@ const Page = () => {
     strict: false
   });
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+
   // get mapping secret and secret
   const { data: secrets } = useGetSecretAndMappingSecrets({
     projectId: currentProject.id,
@@ -154,8 +158,8 @@ const Page = () => {
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
   }, []);
-  console.log(secrets);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [isUpdate, setIsUpdate] = useState(false);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const [showSameValue, setShowSameValue] = useState(false);
   const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.MappingSecretPage.path });
@@ -178,10 +182,26 @@ const Page = () => {
   const routerQueryParams = useSearch({
     from: ROUTE_PATHS.SecretManager.MappingSecretPage.id
   });
-  console.log(routerQueryParams);
   const secretPath = secrets?.mappingSecret?.key || "/";
-  console.log(secretPath);
   const userAvailableEnvs = currentProject?.environments || [];
+
+  useEffect(() => {
+    if (!secrets?.secrets) return;
+
+    const hasEditableSecret = secrets.secrets.some((secret) =>
+      permission.can(
+        ProjectPermissionSecretActions.Edit,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: secret?.env || "",
+          secretPath: secret?.path || "",
+          secretName: secret?.key || "",
+          secretTags: ["*"]
+        })
+      )
+    );
+
+    setIsUpdate(hasEditableSecret);
+  }, [secrets]);
 
   const {
     secretImports,
@@ -236,7 +256,6 @@ const Page = () => {
         secretValue,
         type
       });
-      console.log(result);
       if ("approval" in result) {
         createNotification({
           type: "info",
@@ -249,7 +268,6 @@ const Page = () => {
         });
       }
     } catch (error) {
-      console.log(error);
       createNotification({
         type: "error",
         text: "Failed to update secret"
@@ -280,7 +298,6 @@ const Page = () => {
     setSearchFilter(el);
     setDebouncedSearchFilter(el);
   };
-  console.log(secrets);
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
   const isTableEmpty = totalCount === 0;
 
@@ -300,8 +317,10 @@ const Page = () => {
   }, [secrets]);
 
   const updateMappingSecret = useUpdateMappingSecret();
+  console.log(secrets);
 
-  const handleSave = (mappingKey: string, oldValue: string, mappingId: string) => {
+  const handleSave = async (mappingKey: string, oldValue: string, mappingId: string) => {
+    console.log(secrets?.mappingSecret);
     try {
       updateMappingSecret.mutate({
         secretKey: mappingKey,
@@ -310,14 +329,23 @@ const Page = () => {
         projectId: currentProject.id,
         secretPath: "/",
         newValue: editedValue,
-        mappingId: mappingId
+        mappingId: mappingId,
+        secretData: {
+          mappingSecret: secrets?.mappingSecret,
+          secrets: secrets?.secrets
+        }
       });
 
       createNotification({
         text: "Successfully updated reference secret values",
         type: "success"
       });
-    } catch (error) {}
+    } catch (error) {
+      createNotification({
+        text: `Fail to updated reference secret values ${error}`,
+        type: "error"
+      });
+    }
   };
   const deleteMappingSecretMutation = useDeleteMappingSecret();
 
@@ -431,7 +459,7 @@ const Page = () => {
                 <Tr className="text-center hover:bg-gray-800">
                   {/* Reference Key */}
                   <Td className="p-2 text-sm text-white">
-                    <div className="text-center">{secrets.mappingSecret.key || "—"}</div>
+                    <div className="text-center">{secrets?.mappingSecret.key || "—"}</div>
                   </Td>
                   <Td>
                     <input
@@ -444,29 +472,46 @@ const Page = () => {
 
                   <Td className="">
                     <div className="flex h-full items-center justify-center gap-4 p-2 text-center text-sm">
-                      {editedValue !== secrets.mappingSecret.value && (
-                        <>
-                          <FontAwesomeIcon
-                            icon={faCheck}
-                            sise="md"
-                            className="cursor-pointer text-white"
-                            onClick={() =>
-                              handleSave(
-                                secrets.mappingSecret.key,
-                                secrets.mappingSecret.value,
-                                secrets.mappingSecret.id
-                              )
-                            }
-                          />
-                        </>
+                      {editedValue !== secrets?.mappingSecret?.value &&
+                        (isUpdate ? (
+                          <>
+                            <FontAwesomeIcon
+                              icon={faCheck}
+                              sise="md"
+                              className="cursor-pointer text-white"
+                              onClick={() =>
+                                handleSave(
+                                  secrets?.mappingSecret.key,
+                                  secrets?.mappingSecret.value,
+                                  secrets?.mappingSecret.id
+                                )
+                              }
+                            />
+                          </>
+                        ) : (
+                          <Tooltip content="You don't have permission to update this secret">
+                            <FontAwesomeIcon
+                              icon={faBan}
+                              className="cursor-not-allowed text-gray-400"
+                            />
+                          </Tooltip>
+                        ))}
+                      {isUpdate ? (
+                        <FontAwesomeIcon
+                          icon={faTrash}
+                          className="cursor-pointer text-white"
+                          onClick={toggleModal}
+                        />
+                      ) : (
+                        <div className="group relative cursor-not-allowed">
+                          <Tooltip content="You don't have permission to delete this secret">
+                            <FontAwesomeIcon
+                              icon={faTrash}
+                              className="cursor-not-allowed text-gray-400 group-hover:text-gray-300"
+                            />
+                          </Tooltip>
+                        </div>
                       )}
-
-                      <FontAwesomeIcon
-                        icon={faTrash}
-                        size="md"
-                        className="cursor-pointer text-white"
-                        onClick={toggleModal}
-                      />
                     </div>
                   </Td>
                 </Tr>
@@ -494,12 +539,7 @@ const Page = () => {
                   className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
                   style={{ height: collapseEnvironments ? headerHeight : undefined }}
                 >
-                  <div
-                    className={twMerge(
-                      "flex h-full border-b border-mineshaft-600 pb-3 pl-3 pr-5",
-                      !collapseEnvironments && "border-r pt-3.5"
-                    )}
-                  ></div>
+                  Name
                 </Th>
                 <Th>Service</Th>
                 {visibleEnvs?.map(({ name, slug }, index) => {

@@ -3,12 +3,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faArrowDown, faArrowUp, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faInfoCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 
 import {
   Button,
@@ -49,7 +50,6 @@ import {
   faFolderBlank,
   faFolderPlus,
   faKey,
-  faPlus,
   faRotate,
   faCheck,
   faTrash
@@ -110,6 +110,7 @@ import {
 import { Filter, RowType } from "../SecretDashboardPage/SecretMainPage.types";
 import { useSecretsAndMappingSecret } from "../../../hooks/utils/secrets-overview";
 import {
+  useCreateMappingSecret,
   useGetMappingSecrets,
   useGetSecretAndMappingSecrets
 } from "../../../hooks/api/mappingSecrets";
@@ -144,8 +145,7 @@ const Page = () => {
     strict: false
   });
   const { currentProject } = useProject();
-
-  // get mapping secret and secret
+  console.log(currentProject.id);
   const { data: sameValueSecrets } = useGetSameValueSecretWithoutMappingSecret({
     projectId: currentProject.id
   });
@@ -159,16 +159,6 @@ const Page = () => {
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const [showSameValue, setShowSameValue] = useState(false);
   const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.MappingSecretPage.path });
-  const [selectedEntries, setSelectedEntries] = useState<{
-    // selectedEntries[name/key][envSlug][resource]
-    [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
-    [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
-    [EntryType.MAPPING]: Record<string, Record<string, TMappingSecret>>;
-  }>({
-    [EntryType.FOLDER]: {},
-    [EntryType.SECRET]: {},
-    [EntryType.MAPPING]: {}
-  });
   const reshapedSameValue = useMemo(() => {
     if (!sameValueSecrets?.sameValueSecret || sameValueSecrets?.sameValueSecret.length === 0)
       return [];
@@ -199,7 +189,7 @@ const Page = () => {
     from: ROUTE_PATHS.SecretManager.SameValueSecretPage.id
   });
   const userAvailableEnvs = currentProject?.environments || [];
-  const secretPath = "Same value secrets";
+  const secretPath = "/";
   const {
     secretImports,
     isImportedSecretPresentInEnv,
@@ -283,7 +273,16 @@ const Page = () => {
     minHeight: DEFAULT_COLLAPSED_HEADER_HEIGHT,
     maxHeight: 288
   });
-
+  const [selectedEntries, setSelectedEntries] = useState<{
+    // selectedEntries[name/key][envSlug][resource]
+    [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
+    [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
+    [EntryType.MAPPING]: Record<string, Record<string, TMappingSecret>>;
+  }>({
+    [EntryType.FOLDER]: {},
+    [EntryType.SECRET]: {},
+    [EntryType.MAPPING]: {}
+  });
   const handleResetSearch = (path: string) => {
     const restore = filterHistory.get(path);
     setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
@@ -298,6 +297,38 @@ const Page = () => {
       (s, index, self) =>
         index ===
         self.findIndex((t) => t.secretKey === s.secretKey && t.folderName === s.folderName)
+    );
+  };
+  const createMappingSecret = useCreateMappingSecret();
+
+  const handleCreateReferenceSecret = (value, secrets) => {
+    const map = secrets.map((secret) => secret.id);
+
+    createMappingSecret.mutate(
+      {
+        secrets: map,
+        value,
+        projectId: currentProject.id
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: "Successfully created reference secret values",
+            type: "success"
+          });
+
+          navigate({
+            to: "/projects/secret-management/$projectId/overview",
+            params: { projectId: currentProject.id }
+          });
+        },
+        onError: (error) => {
+          createNotification({
+            type: "error",
+            text: `Failed to create reference secret: ${error.message || error}`
+          });
+        }
+      }
     );
   };
 
@@ -361,10 +392,8 @@ const Page = () => {
           <>
             <div className="mt-4 rounded-md border border-gray-700 bg-gray-900 p-3">
               <div className="flex items-center justify-between gap-3 rounded-md border border-gray-700 bg-mineshaft-800 p-3">
-                {/* Label */}
                 <div className="min-w-[4rem] text-sm font-medium text-gray-200">Value</div>
 
-                {/* Input */}
                 <input
                   type="text"
                   readOnly
@@ -373,12 +402,19 @@ const Page = () => {
                   className="flex-1 rounded-md bg-gray-800 px-3 py-2 font-mono text-sm text-gray-100 outline-none focus:bg-gray-700 focus:ring-1 focus:ring-blue-500"
                 />
 
-                {/* Badge */}
                 <div className="flex items-center gap-2 text-sm text-gray-300">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white">
                     {sec.secrets.length}
                   </span>
                   <span>same value</span>
+                </div>
+
+                <div
+                  onClick={() => handleCreateReferenceSecret(sec.value, sec.secrets)}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border-gray-800 bg-gray-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-900"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="text-white" />
+                  <span>Create reference secret</span>
                 </div>
               </div>
             </div>
@@ -406,7 +442,7 @@ const Page = () => {
                             "flex h-full border-b border-mineshaft-600 pb-3 pl-3 pr-5",
                             !collapseEnvironments && "border-r pt-3.5"
                           )}
-                        ></div>
+                        >Name</div>
                       </Th>
 
                       <Th>Service</Th>

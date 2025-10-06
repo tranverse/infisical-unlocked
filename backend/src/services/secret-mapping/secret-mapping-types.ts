@@ -28,3 +28,9 @@ export type TGetSecretsAndMappingSecretDTO = TProjectPermission & {
   projectId: string;
   environment: string;
 };
+
+export type TCreateMappingSecretDTO = TProjectPermission & {
+  value: string;
+  secrets: [];
+  projectId: string;
+};

@@ -143,9 +143,7 @@ export const SecretOverviewTableRow = ({
         </Td>
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
-          console.log(secret);
           const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
-          console.log(isSecretImported);
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.isEmpty;
           return (
@@ -218,16 +216,20 @@ export const SecretOverviewTableRow = ({
                       <th style={{ padding: "0.5rem 1rem" }} className="border-none">
                         Value
                       </th>
-                      <div className="absolute right-0 top-0 ml-auto mr-1 mt-1 w-min">
-                        <Button
-                          variant="outline_bg"
-                          className="p-1"
-                          leftIcon={<FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />}
-                          onClick={() => setIsSecretVisible.toggle()}
-                        >
-                          {isSecretVisible ? "Hide Values" : "Reveal Values"}
-                        </Button>
-                      </div>
+                      <th>
+                        <div className="absolute right-0 top-0 ml-auto mr-1 mt-1 w-min">
+                          <Button
+                            variant="outline_bg"
+                            className="p-1"
+                            leftIcon={
+                              <FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />
+                            }
+                            onClick={() => setIsSecretVisible.toggle()}
+                          >
+                            {isSecretVisible ? "Hide Values" : "Reveal Values"}
+                          </Button>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="border-t-2 border-mineshaft-600">

@@ -118,9 +118,17 @@ export const useUpdateSecretV3 = ({
       return data;
     },
     onSuccess: (_, { projectId, environment, secretPath }) => {
+      console.log("environment", environment);
+      console.log("secretPath", secretPath);
+      const key = dashboardKeys.getDashboardSecrets({ projectId, secretPath });
+      console.log("queryKey", key);
+      const key1 = secretKeys.getProjectSecret({ projectId, environment, secretPath });
+      console.log("queryKey1", key1);
+
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
+
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
@@ -137,7 +145,14 @@ export const useUpdateSecretV3 = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      console.log(
+        queryClient
+          .getQueryCache()
+          .findAll()
+          .map((q) => q.queryKey)
+      );
     },
+
     ...options
   });
 };
@@ -517,5 +532,3 @@ export const useCreateCommit = () => {
     }
   });
 };
-
-

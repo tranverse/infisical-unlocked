@@ -100,19 +100,14 @@ export const MappingSecretOverviewTableRow = ({
     path: secretPath,
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
-  // console.log(sec)
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
   const [isSecretVisible, setIsSecretVisible] = useToggle();
-  console.log(folderName);
   const { permission } = useProjectPermission();
-  console.log(environments);
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
     importedSecret: { secret?: SecretV3RawSanitized } | undefined
   ) => {
-    console.log(secret);
-    console.log("importedSecret", importedSecret);
     const canEditSecretValue = permission.can(
       ProjectPermissionSecretActions.Edit,
       subject(ProjectPermissionSub.Secrets, {
@@ -169,15 +164,11 @@ export const MappingSecretOverviewTableRow = ({
         </Td>
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey, folderName);
-          console.log(secret);
 
           const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
-          console.log("isSecretImported", isSecretImported);
           const isSecretPresent = Boolean(secret);
-          console.log("isSecretPresent", isSecretPresent);
 
           const isSecretEmpty = secret?.isEmpty;
-          console.log("isSecretEmpty", isSecretEmpty);
 
           return (
             <Td
@@ -224,7 +215,7 @@ export const MappingSecretOverviewTableRow = ({
       {isFormExpanded && (
         <Tr>
           <Td
-            colSpan={totalCols}
+            colSpan={totalCols + 1}
             className={`bg-bunker-600 px-0 py-0 ${
               isFormExpanded && "border-b-2 border-mineshaft-500"
             }`}
@@ -258,7 +249,6 @@ export const MappingSecretOverviewTableRow = ({
                       const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
                       const importedSecret = getImportedSecretByKey(slug, secretKey);
                       const value = getDefaultValue(secret, importedSecret);
-                      console.log(value);
 
                       return (
                         <tr

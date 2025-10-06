@@ -63,7 +63,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       };
     }
   });
-
+  // get mapping secret in project
   server.route({
     method: "GET",
     url: "/:projectId",
@@ -97,7 +97,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       };
     }
   });
-
+  // delete mapping secret
   server.route({
     method: "DELETE",
     url: "/:mappingId",
@@ -135,7 +135,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       };
     }
   });
-
+  // gett all mapping secret
   server.route({
     method: "GET",
     url: "/all-secrets/:mappingId",
@@ -181,6 +181,46 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       return {
         mappingSecrets: secrets.returnMappingSecret,
         secrets: secrets.returnSecrets
+      };
+    }
+  });
+
+  // create mapping secret
+  server.route({
+    method: "POST",
+    url: "/create",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      description: "Get secrets and mapping secret",
+      security: [{ bearerAuth: [] }],
+      body: z.object({
+        value: z.string(),
+        secrets: z.array(z.string()),
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          secrets: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const secrets = await server.services.secretMapping.createMappingSecretInProject({
+        projectId: req.body.projectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        value: req.body.value,
+        secrets: req.body.secrets
+      });
+
+      return {
+        secrets
       };
     }
   });

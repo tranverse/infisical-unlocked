@@ -21,7 +21,7 @@ import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
   useGetSecretRotations,
-  useGetMappingSecrets,
+  useGetMappingSecrets
 } from "@app/hooks/api";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -48,7 +48,6 @@ export const SecretManagerLayout = () => {
       refetchOnMount: false
     }
   });
-
 
   const pendingRequestsCount =
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
@@ -96,6 +95,23 @@ export const SecretManagerLayout = () => {
                               <FontAwesomeIcon icon={faVault} />
                             </div>
                             Secrets
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/secret-management/$projectId/integrations"
+                      params={{
+                        projectId: currentProject.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faPuzzlePiece} />
+                            </div>
+                            Reference Secrets
                           </div>
                         </MenuItem>
                       )}

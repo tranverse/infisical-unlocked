@@ -227,7 +227,6 @@ export const useGetImportedSecretsAllEnvs = ({
         const secret = secretImports?.[selectedEnvIndex]?.data?.find(({ secrets }) =>
           secrets.find((s) => s.key === secretName)
         );
-        console.log("lll", secret)
         if (!secret) return undefined;
 
         return {

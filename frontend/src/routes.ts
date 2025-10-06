@@ -50,7 +50,7 @@ const secretManagerRoutes = route("/projects/secret-management/$projectId", [
     route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
-    route("/mapping-secrets/$mappingId", "secret-manager/MappingSecretPage/route.tsx"), // mapping secret
+    route("/mapping-secrets/$mappingId", "secret-manager/MappingSecretPage/route.tsx"), // mapping secret // change ui
     route("/secret-value", "secret-manager/SameValueSecretPage/route.tsx"), // same value
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
     route("/commits/$environment/$folderId", [  
@@ -63,6 +63,10 @@ const secretManagerRoutes = route("/projects/secret-management/$projectId", [
         )
       ])
     ]),
+    // secret refence
+    // route("/reference-secrets", [
+    //   index("secret-manager/IntegrationsListPage/route.tsx"),
+    // ]),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-secret-manager.tsx"),

@@ -79,25 +79,25 @@ export const useGetMappingSecrets = ({
   });
 };
 
-  export const useGetSecretAndMappingSecrets = ({
-    projectId,
-    mappingId,
-    options = {}
-  }: TGetSecretAndMappingSecretDTO & {
-    option?: Omit<
-      UseQueryOptions<
-        { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
-        unknown,
-        { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
-        ReturnType<typeof mappingSecretKeys.detail>
-      >,
-      "queryKey" | "queryFn"
-    >;
-  }) => {
-    return useQuery({
-      ...options,
-      queryKey: mappingSecretKeys.detail({ projectId, mappingId }),
-      enabled: Boolean(projectId) && Boolean(mappingId) && (options?.enabled ?? true),
-      queryFn: async () => fetchSecretsAndMappingSecret({ projectId, mappingId })
-    });
-  };
+export const useGetSecretAndMappingSecrets = ({
+  projectId,
+  mappingId,
+  options = {}
+}: TGetSecretAndMappingSecretDTO & {
+  option?: Omit<
+    UseQueryOptions<
+      { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
+      unknown,
+      { mappingSecret: TMappingSecret; secrets: SecretV3RawSanitized[] },
+      ReturnType<typeof mappingSecretKeys.detail>
+    >,
+    "queryKey" | "queryFn"
+  >;
+}) => {
+  return useQuery({
+    ...options,
+    queryKey: mappingSecretKeys.detail({ projectId, mappingId }),
+    enabled: Boolean(projectId) && Boolean(mappingId) && (options?.enabled ?? true),
+    queryFn: async () => fetchSecretsAndMappingSecret({ projectId, mappingId })
+  });
+};

@@ -168,7 +168,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
         ) {
           createNotification({
             type: "info",
-            text: `A mapping secret was created in environment ${result.value.environment}`
+            text: `Reference secret was created in environment ${result.value.environment}`
           });
         }
       });

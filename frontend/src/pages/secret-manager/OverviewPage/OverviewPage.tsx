@@ -278,7 +278,6 @@ export const OverviewPage = () => {
 
   const [filteredEnvs, setFilteredEnvs] = useState<ProjectEnv[]>([]);
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
-  console.log(visibleEnvs);
 
   const {
     secretImports,
@@ -334,8 +333,6 @@ export const OverviewPage = () => {
     usedBySecretSyncs
   } = overview ?? {};
 
-  console.log(secrets);
-  console.log("sameValueSecrets", sameValueSecrets);
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
@@ -521,7 +518,6 @@ export const OverviewPage = () => {
         secretComment: "",
         type: SecretType.Shared
       });
-      console.log(result);
       if ("approval" in result) {
         createNotification({
           type: "info",
@@ -540,7 +536,6 @@ export const OverviewPage = () => {
         }
       }
     } catch (error) {
-      console.log(error);
       createNotification({
         type: "error",
         text: "Failed to create secret"
@@ -581,7 +576,6 @@ export const OverviewPage = () => {
         secretValue,
         type
       });
-      console.log(result);
       if ("approval" in result) {
         createNotification({
           type: "info",
@@ -594,7 +588,6 @@ export const OverviewPage = () => {
         });
       }
     } catch (error) {
-      console.log(error);
       createNotification({
         type: "error",
         text: "Failed to update secret"
@@ -625,7 +618,6 @@ export const OverviewPage = () => {
         });
       }
     } catch (error) {
-      console.log(error);
       createNotification({
         type: "error",
         text: "Failed to delete secret"
@@ -643,7 +635,6 @@ export const OverviewPage = () => {
 
   const handleFolderClick = (path: string) => {
     // store for breadcrumb nav to restore previously used filters
-    console.log(filterHistory);
     setFilterHistory((prev) => {
       const curr = new Map(prev);
       curr.set(secretPath, { filter, searchFilter });

@@ -1,13 +1,18 @@
 import TSecretMappingDALFactory from "./secret-mapping-dal";
 import TSecretV2BridgeDALFactory from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { TUpdateMappingSecretDTO, TGetMappingSecretDTO, TGetSecretsAndMappingSecretDTO } from "./secret-mapping-types";
+import {
+  TUpdateMappingSecretDTO,
+  TGetMappingSecretDTO,
+  TGetSecretsAndMappingSecretDTO,
+  TCreateMappingSecretDTO
+} from "./secret-mapping-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmsDataKey } from "../kms/kms-types";
 import { reshapeBridgeSecret } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-
+import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 type TSecretMappingServiceFactoryDep = {
   secretMappingDAL: TSecretMappingDALFactory;
   secretDAL: TSecretV2BridgeDALFactory;
@@ -47,7 +52,7 @@ export const secretMappingServiceFactory = ({
     console.log("mappingSecret", mappingSecret);
 
     const returnSecret = mappingSecret.map((secret) => {
-      console.log(secret.value)
+      console.log(secret.value);
       return {
         ...secret,
         value: secret.value ? secretManagerDecryptor({ cipherTextBlob: secret.value }).toString() : ""
@@ -108,6 +113,52 @@ export const secretMappingServiceFactory = ({
       returnMappingSecret,
       returnSecrets
     };
+  };
+
+  const createMappingSecretInProject = async ({
+    actor,
+    actorId,
+    projectId,
+    actorOrgId,
+    actorAuthMethod,
+    secretPath,
+    secrets,
+    value
+  }: TCreateMappingSecretDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    // encrypt value
+    console.log("project id", projectId);
+    console.log("input secret", secrets);
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+
+    const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+
+    const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
+
+    console.log("secrets.secrets", secrets);
+    let newMappingSecret = await secretMappingDAL.createSecretMapping({
+      key: secretMappingKey,
+      value: encryptedValue
+    });
+    let mappingId = newMappingSecret.id;
+
+    for (const secretId of secrets) {
+      console.log("secretId", secretId);
+      console.log("mappingId", mappingId);
+
+      const update = await secretDAL.updateMappingIdById(secretId, mappingId);
+      console.log("update:", update);
+    }
+
+    return "Created";
   };
   const updateValueMappingSecret = async ({
     actor,
@@ -209,6 +260,7 @@ export const secretMappingServiceFactory = ({
     updateValueMappingSecret,
     getMappingSecretsInProject,
     deleteMappingSecretsInProject,
-    getSecretsAndMappingSecretInProject
+    getSecretsAndMappingSecretInProject,
+    createMappingSecretInProject
   };
 };

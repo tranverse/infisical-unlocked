@@ -226,7 +226,7 @@ export const MappingSecretOverviewTableRow = ({
       {isFormExpanded && (
         <Tr>
           <Td
-            colSpan={totalCols}
+            colSpan={totalCols + 1}
             className={`bg-bunker-600 px-0 py-0 ${
               isFormExpanded && "border-b-2 border-mineshaft-500"
             }`}
