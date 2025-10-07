@@ -11,7 +11,7 @@ import {
   SecretApprovalPoliciesSchema,
   SecretTagsSchema,
   UsersSchema,
-  SecretMappingsSchema 
+  SecretMappingsSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -151,9 +151,17 @@ export const secretRawSchema = z.object({
 });
 
 export const mappingSecretSchema = SecretMappingsSchema.extend({
-  value: z.string()
+  value: z.string(),
+  services: z.array(
+    z.object({
+      slug: z.string(),
+      folderName: z.string(),
+      environment: z.string()
+    })
+  ),
+  environment: z.string(),
+  secrets: z.array(secretRawSchema)
 });
-
 
 export const ProjectPermissionSchema = z.object({
   action: z

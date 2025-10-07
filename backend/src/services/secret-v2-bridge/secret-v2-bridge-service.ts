@@ -287,8 +287,6 @@ export const secretV2BridgeServiceFactory = ({
     });
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
       throw new BadRequestError({ message: "Secret already exist" });
-    // console.log("Secret DAL:", secretDAL)
-    // console.log("Secret mapping DAL:", secretMappingDAL)
 
     // encrypted secret
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
@@ -299,7 +297,6 @@ export const secretV2BridgeServiceFactory = ({
 
     // check duplicate value in one service
     const allSecretInService = await secretDAL.getAllSecretValueInOneService(folderId);
-    console.log("allSecretInService", allSecretInService);
     if (allSecretInService.length > 0) {
       for (const secretService of allSecretInService) {
         const plainText = secretManagerDecryptor({ cipherTextBlob: secretService.encryptedValue });
@@ -354,19 +351,15 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
-
     // check mapping
-    // find secrets with same value in project
+    // find secrets with same value and environment in project
     let mappingId = null;
-    const allSecrets = await secretDAL.getAllSecretInProjectAndNotInFolder(projectId, folderId);
-    console.log("allSecrets", allSecrets);
+    const allSecrets = await secretDAL.getAllSecretInProjectAndNotInFolder(projectId, folderId, environment);
     const sameValueSecrets: any[] = [];
     if (allSecrets.length > 0) {
       for (const secret of allSecrets) {
-        // console.log("encrypted value:", secret.encryptedValue)
         // decode every secret in db
         const plainText = secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue });
-        // console.log("plainText:", plainText.toString("utf-8"))
 
         // compare secret with value input
         if (plainText.toString("utf-8") == inputSecret.secretValue) {
@@ -374,7 +367,6 @@ export const secretV2BridgeServiceFactory = ({
         }
       }
     }
-    console.log("Secret value:", sameValueSecrets.length);
 
     //
     if (sameValueSecrets.length > 0) {
@@ -384,18 +376,17 @@ export const secretV2BridgeServiceFactory = ({
       }).cipherTextBlob;
       const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
 
-      let allMappingSecrets = await secretMappingDAL.getAllSecretMappingInProject(projectId);
-      console.log(allMappingSecrets);
+      let allMappingSecrets = await secretMappingDAL.getAllSecretMappingInProjectAndEnvironment(projectId, environment);
       let mapSecret = null;
       for (const map of allMappingSecrets) {
         const decryptedSecretValue = secretManagerDecryptor({ cipherTextBlob: map.value });
+        // check if value of mapping secret does not exsit, new mapping will create
         if (decryptedSecretValue.toString("utf-8") == inputSecret.secretValue) {
           mappingId = map.id;
           mapSecret = map;
           break;
         }
       }
-      console.log("mappingSecret", mapSecret);
       if (!mapSecret) {
         let newMappingSecret = await secretMappingDAL.createSecretMapping({
           key: secretMappingKey,
@@ -406,10 +397,8 @@ export const secretV2BridgeServiceFactory = ({
 
       for (const secret of sameValueSecrets) {
         const update = await secretDAL.updateMappingIdById(secret.secretId, mappingId);
-        console.log("update:", update);
       }
     }
-    console.log("mappingId", mappingId);
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
@@ -626,7 +615,6 @@ export const secretV2BridgeServiceFactory = ({
       });
     // check duplicate value in one service
     const allSecretInService = await secretDAL.getAllSecretValueInOneServiceAndExceptCurrentSecret(folderId, secretId);
-    console.log("allSecretInService", allSecretInService);
     if (allSecretInService.length > 0) {
       for (const secretService of allSecretInService) {
         const plainText = secretManagerDecryptor({ cipherTextBlob: secretService.encryptedValue });
@@ -683,8 +671,7 @@ export const secretV2BridgeServiceFactory = ({
     if (secretValue) {
       // remove mapping id if secret has mapping secret
 
-      const getAllSecrets = await secretDAL.getAllSecretInProjectAndNotInFolder(projectId, folderId);
-      console.log("getAllSecrets", getAllSecrets);
+      const getAllSecrets = await secretDAL.getAllSecretInProjectAndNotInFolder(projectId, folderId, environment);
 
       for (const sc of getAllSecrets) {
         const decryptedValue = secretManagerDecryptor({ cipherTextBlob: sc.encryptedValue });
@@ -698,19 +685,14 @@ export const secretV2BridgeServiceFactory = ({
               value: encryptedValue.encryptedValue
             });
             newMappingId = newMappingSecret.id;
-            console.log("id", sc.secretId);
             const up = await secretDAL.updateMappingIdById(sc.secretId, newMappingId);
-            console.log("up", up);
           }
           break;
         }
       }
-      console.log("secret", secret.id);
 
       const getSecretMapping = await secretDAL.getSecretsByMappingIdAndNotInSecretId(secret.mappingId, secret.id);
-      console.log("getSecretMapping", getSecretMapping);
       if (getSecretMapping.length <= 1) {
-        console.log("oldmappingId", secret.mappingId);
         await secretMappingDAL.deleteSecretMappingById(secret.mappingId);
       }
     }
@@ -748,7 +730,6 @@ export const secretV2BridgeServiceFactory = ({
         },
         tx
       });
-      console.log("fnSecretBulkUpdate", modifiedSecretsInDB);
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     });
@@ -866,7 +847,6 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: secretToDelete.tags?.map((el) => el.slug)
         })
       );
-    console.log("mappingid", secretToDelete.mappingId);
 
     try {
       const deletedSecret = await secretDAL.transaction(async (tx) => {
@@ -892,19 +872,15 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       // delete mapping secret
-      console.log("mappingid", secretToDelete.mappingId);
       if (secretToDelete.mappingId != null) {
         const getSecretWithSameValue = await secretDAL.getSecretsByMappingIdAndNotInSecretId(
           secretToDelete.mappingId,
           secretToDelete.id
         );
-        console.log("getSecretMapping", getSecretWithSameValue);
         if (getSecretWithSameValue.length <= 1) {
-          console.log("oldmappingId", secretToDelete.mappingId);
           const sameValueSecret = getSecretWithSameValue[0];
           await secretMappingDAL.deleteSecretMappingById(secretToDelete.mappingId);
           const updatedSecret = await secretDAL.updateMappingIdById(sameValueSecret.id, secretToDelete.mappingId);
-          console.log("updateSecret", updateSecret);
         }
       }
 
@@ -1115,7 +1091,6 @@ export const secretV2BridgeServiceFactory = ({
           secretValueHidden
         );
       });
-    console.log("decryptedSecrets", decryptedSecrets);
 
     return decryptedSecrets;
   };
@@ -1146,7 +1121,6 @@ export const secretV2BridgeServiceFactory = ({
     if (!isInternal) {
       throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
     }
-
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
 
     if (!folders.length) {
@@ -1355,7 +1329,6 @@ export const secretV2BridgeServiceFactory = ({
           secretValueHidden && !isPersonalSecret
         );
       });
-    console.log("decryptedSecrets", decryptedSecrets);
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
@@ -2392,7 +2365,6 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
 
-    console.log("secretsToDelete", secretsToDelete);
     if (secretsToDelete.length !== inputSecrets.length)
       throw new NotFoundError({
         message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
@@ -2405,7 +2377,6 @@ export const secretV2BridgeServiceFactory = ({
         deleteMappingSecretIds.push(deleteSecret.mappingId);
       }
     }
-    console.log("deleteMappingSecretIds", deleteMappingSecretIds);
 
     secretsToDelete.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -2437,23 +2408,10 @@ export const secretV2BridgeServiceFactory = ({
         tx
       });
 
-      console.log("modifiedSecretsInDB", modifiedSecretsInDB);
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     };
 
-    // delete mapping secret
-    // get mapping id in secret
-    // const allSecretMappings = await secretMappingDAL.
-    // for(const sc of secretsToDelete){
-    //   if(sc.mappingId != null){
-    //       const getSecretWithSameValue = await secretDAL.getSecretsByMappingIdAndNotInSecretId(sc.mappingId, sc.id)
-    //       console.log("getSecretWithSameValue", getSecretWithSameValue)
-    //       if(getSecretWithSameValue.length <= 1){
-
-    //       }
-    //   }
-    // }
 
     try {
       const secretsDeleted = providedTx
@@ -2480,9 +2438,7 @@ export const secretV2BridgeServiceFactory = ({
       // delete mapping secret if secret reference less than 1
       for (const mappingId of deleteMappingSecretIds) {
         const secretRemain = await secretDAL.getSecretsByMappingId(mappingId);
-        console.log("secretRemain", secretRemain);
         if (secretRemain.length <= 1) {
-          console.log("secretRemain", secretRemain);
           await secretMappingDAL.deleteSecretMappingById(mappingId);
         }
       }
@@ -3343,9 +3299,6 @@ export const secretV2BridgeServiceFactory = ({
     const secrets = await secretDAL.find({ folderId, $in: { [`${TableName.SecretV2}.key` as "key"]: keys } });
     return secrets.map((el) => ({ id: el.id, key: el.key }));
   };
-
-
-
 
   return {
     createSecret,

@@ -134,6 +134,8 @@ export enum EntryType {
   SECRET = "secret",
   MAPPING = "mapping"
 }
+import { ProjectPermissionSub } from "@app/context";
+
 import { MappingSecretOverviewTableRow } from "./components/MappingSecretOverviewTableRow";
 import {
   useDeleteMappingSecret,
@@ -144,11 +146,18 @@ const Page = () => {
   const params = useParams({
     strict: false
   });
+  const blurClass = "blur-sm opacity-50 cursor-not-allowed";
+
   const { currentProject } = useProject();
-  console.log(currentProject.id);
   const { data: sameValueSecrets } = useGetSameValueSecretWithoutMappingSecret({
     projectId: currentProject.id
   });
+  const { permission } = useProjectPermission();
+
+  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.ReadValue
+  );
   const getSecretByKey = (env: string, key: string, folderName: string, secrets: []) => {
     const sec = secrets?.find(
       (s) => s.env === env && s.secretKey === key && s.folderName === folderName
@@ -165,8 +174,11 @@ const Page = () => {
     const shape = new Map();
     sameValueSecrets?.sameValueSecret.forEach((same) => {
       const val = same.secretValue;
-      if (!shape.has(val)) shape.set(val, []);
-      shape.get(val).push(same);
+      const env = same.environment;
+      const key = `${val}-${env}`;
+      console.log(key);
+      if (!shape.has(key)) shape.set(key, []);
+      shape.get(key).push(same);
     });
     return Array.from(shape, ([value, secrets]) => ({ value, secrets }));
   }, [sameValueSecrets]);
@@ -318,7 +330,7 @@ const Page = () => {
           });
 
           navigate({
-            to: "/projects/secret-management/$projectId/overview",
+            to: "/projects/secret-management/$projectId/reference-secrets",
             params: { projectId: currentProject.id }
           });
         },
@@ -331,295 +343,165 @@ const Page = () => {
       }
     );
   };
-
+  console.log("reshapedSameValue", reshapedSameValue);
   return (
     <div>
       <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
         <div className="flex w-full items-baseline justify-between">
-          <PageHeader
-            title="Secrets Overview"
-            description={
-              <p className="text-md text-bunker-300">
-                Inject your secrets using
-                <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/cli/overview"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Infisical CLI
-                </a>
-                ,
-                <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/documentation/getting-started/api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Infisical API
-                </a>
-                ,
-                <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/sdks/overview"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Infisical SDKs
-                </a>
-                , and
-                <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/documentation/getting-started/introduction"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  more
-                </a>
-                . Click the Explore button to view the secret details section.
-              </p>
-            }
-          />
+          <PageHeader title="Same value secret" />
         </div>
       </div>
       <div className="mt-4 flex items-center justify-between">
         <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
       </div>
-      {reshapedSameValue?.map((sec, index) => {
-        const filter = filteredSecrets(sec?.secrets);
+      {sameValueSecrets?.sameValueSecret?.length > 0 ? (
+        reshapedSameValue?.map((sec, index) => {
+          const filter = filteredSecrets(sec?.secrets);
+          console.log("reshapedSameValue", sec);
 
-        return (
-          <>
-            <div className="mt-4 rounded-md border border-gray-700 bg-gray-900 p-3">
-              <div className="flex items-center justify-between gap-3 rounded-md border border-gray-700 bg-mineshaft-800 p-3">
-                <div className="min-w-[4rem] text-sm font-medium text-gray-200">Value</div>
+          return (
+            <>
+              <div className="mt-4 rounded-md border border-gray-700 bg-gray-900 p-3">
+                <TableContainer className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none border border-gray-700">
+                  <Table className="w-full table-auto border-collapse">
+                    <THead className="sticky top-0 z-20 bg-gray-900 text-center">
+                      <Tr>
+                        {["Value", "Environment", "Action"].map((title, idx) => (
+                          <Th
+                            key={idx}
+                            className="min-table-row border-b-0 p-2 text-center text-xs font-semibold text-white"
+                          >
+                            {title}
+                          </Th>
+                        ))}
+                      </Tr>
+                    </THead>
 
-                <input
-                  type="text"
-                  readOnly
-                  value={sec.value}
-                  onChange={(e) => setEditedValue(e.target.value)}
-                  className="flex-1 rounded-md bg-gray-800 px-3 py-2 font-mono text-sm text-gray-100 outline-none focus:bg-gray-700 focus:ring-1 focus:ring-blue-500"
-                />
+                    <TBody>
+                      {reshapedSameValue && (
+                        <Tr className="text-center hover:bg-gray-800">
+                          <Td className="relative">
+                            {canReadSecretValue ? (
+                              <input
+                                type="password"
+                                value={sec?.secrets[0]?.secretValue}
+                                className="w-full rounded border border-none border-gray-600 bg-gray-800 px-2 py-1 text-center text-white focus:border-blue-500 focus:outline-none"
+                                onFocus={(e) => (e.currentTarget.type = "text")}
+                                onBlur={(e) => (e.currentTarget.type = "password")}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center">
+                                <span className="italic text-gray-400">••••••••</span>
+                                <Tooltip content="You don't have permission to view this value">
+                                  <span className="ml-2 flex cursor-help items-center text-gray-400">
+                                    <FontAwesomeIcon icon={faInfoCircle} />
+                                  </span>
+                                </Tooltip>
+                              </div>
+                            )}
+                          </Td>
 
-                <div className="flex items-center gap-2 text-sm text-gray-300">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white">
-                    {sec.secrets.length}
-                  </span>
-                  <span>same value</span>
-                </div>
+                          <Td className={!canReadSecretValue ? blurClass : "text-center"}>
+                            {!canReadSecretValue ? (
+                              <Tooltip content="You don't have permission to view environment">
+                                <span>{sec?.environment || "—"}</span>
+                              </Tooltip>
+                            ) : (
+                              sec?.secrets[0].environment
+                            )}
+                          </Td>
 
-                <div
-                  onClick={() => handleCreateReferenceSecret(sec.value, sec.secrets)}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border-gray-800 bg-gray-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-900"
-                >
-                  <FontAwesomeIcon icon={faPlus} className="text-white" />
-                  <span>Create reference secret</span>
-                </div>
+                          <Td>
+                            <div
+                              className="flex cursor-pointer items-center justify-center gap-2 rounded border border-blue-800 p-1 shadow"
+                              onClick={() =>
+                                handleCreateReferenceSecret(sec.secrets[0].secretValue, sec.secrets)
+                              }
+                            >
+                              <FontAwesomeIcon icon={faPlus} />
+                              <span>Create secret</span>
+                            </div>
+                          </Td>
+                        </Tr>
+                      )}
+                    </TBody>
+                  </Table>
+                </TableContainer>
               </div>
-            </div>
 
-            <div ref={tableRef} className="mt-4">
-              <TableContainer
-                onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
-                className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none"
-              >
-                <Table>
-                  <THead
-                    className="sticky top-0 z-20 text-center"
-                    style={{ height: collapseEnvironments ? headerHeight : undefined }}
-                  >
-                    <Tr
-                      className="sticky top-0 z-20 border-0"
+              <div ref={tableRef} className="mt-4">
+                <TableContainer
+                  onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
+                  className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none"
+                >
+                  <Table>
+                    <THead
+                      className="sticky top-0 z-20 text-center"
                       style={{ height: collapseEnvironments ? headerHeight : undefined }}
                     >
-                      <Th
-                        className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
+                      <Tr
+                        className="sticky top-0 z-20 border-0 text-center"
                         style={{ height: collapseEnvironments ? headerHeight : undefined }}
                       >
-                        <div
-                          className={twMerge(
-                            "flex h-full border-b border-mineshaft-600 pb-3 pl-3 pr-5",
-                            !collapseEnvironments && "border-r pt-3.5"
-                          )}
-                        >Name</div>
-                      </Th>
+                        <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">Name</Th>
 
-                      <Th>Service</Th>
-                      {visibleEnvs?.map(({ name, slug }, index) => {
-                        const envSecKeyCount = getEnvSecretKeyCount(slug, sec.secrets);
-                        const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
-                        const missingKeyCount =
-                          sec.secrets.length - envSecKeyCount - importedSecKeyCount;
-
-                        const isLast = index === visibleEnvs.length - 1;
-
-                        return (
-                          <Th
-                            className={twMerge(
-                              "min-table-row border-b-0 p-0 text-xs",
-                              collapseEnvironments && index === visibleEnvs.length - 1 && "!mr-8",
-                              !collapseEnvironments && "min-w-[11rem] text-center"
-                            )}
-                            style={
-                              collapseEnvironments
-                                ? {
-                                    height: headerHeight,
-                                    width: "w-[1rem]"
-                                  }
-                                : undefined
-                            }
-                            key={`secret-overview-${name}-${index + 1}`}
-                          >
-                            <Tooltip
-                              content={
-                                collapseEnvironments ? (
-                                  <p className="whitespace-break-spaces">{name}</p>
-                                ) : (
-                                  ""
-                                )
-                              }
-                              side="bottom"
-                              sideOffset={-1}
-                              align="end"
-                              className="max-w-xl text-xs normal-case"
-                              rootProps={{
-                                disableHoverableContent: true
-                              }}
-                            >
-                              <div
-                                className={twMerge(
-                                  "border-b border-mineshaft-600",
-                                  collapseEnvironments
-                                    ? "relative"
-                                    : "flex items-center justify-center px-5 pb-[0.82rem] pt-3.5",
-                                  collapseEnvironments && isLast && "overflow-clip"
-                                )}
-                                style={{
-                                  height: collapseEnvironments ? headerHeight : undefined,
-                                  minWidth: collapseEnvironments ? "2.9rem" : undefined
-                                  // width: collapseEnvironments && isLast ? headerHeight * 0.3 : undefined
-                                }}
-                              >
-                                <div
-                                  className={twMerge(
-                                    "border-mineshaft-600",
-                                    collapseEnvironments
-                                      ? "-skew-x-[16rad] transform border-l text-xs"
-                                      : "flex items-center justify-center"
-                                  )}
-                                  style={{
-                                    height: collapseEnvironments ? headerHeight : undefined,
-                                    marginLeft: collapseEnvironments
-                                      ? headerHeight * 0.145
-                                      : undefined
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  className={twMerge(
-                                    "duration-100 hover:text-mineshaft-100",
-                                    collapseEnvironments
-                                      ? "absolute -rotate-[72.75deg] text-left text-sm font-normal"
-                                      : "flex items-center text-center text-sm font-medium"
-                                  )}
-                                  style={getHeaderStyle({
-                                    collapseEnvironments,
-                                    // isLast,
-                                    headerHeight
-                                  })}
-                                  onClick={() => handleExploreEnvClick(slug)}
-                                >
-                                  <p className="truncate font-medium underline">{name}</p>
-                                </button>
-                                {/* {!collapseEnvironments && missingKeyCount > 0 && (
-                            <Tooltip
-                              className="max-w-none lowercase"
-                              content={`${missingKeyCount} secrets missing\n compared to other environments`}
-                            >
-                              <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-sm border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
-                                <span className="text-bunker-100">{missingKeyCount}</span>
-                              </div>
-                            </Tooltip>
-                          )} */}
-                              </div>
-                            </Tooltip>
-                          </Th>
-                        );
-                      })}
-                    </Tr>
-                    {collapseEnvironments && (
-                      <HeaderResizer
-                        onMouseDown={handleMouseDown}
-                        isActive={isResizing}
-                        scrollOffset={scrollOffset}
-                        heightOffset={(tableRef.current?.clientTop ?? 0) + headerHeight - 2.5}
-                      />
-                    )}
-                  </THead>
-                  <TBody>
-                    {visibleEnvs.length > 0 && (
-                      <>
-                        {filter?.map((key, index) => (
-                          <MappingSecretOverviewTableRow
-                            isSelected={Boolean(selectedEntries.secret[key])}
-                            onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
-                            secretPath={key.folderName == "root" ? "/" : "/" + key.folderName}
-                            // getImportedSecretByKey={getImportedSecretByKey}
-                            // isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
-                            // onSecretCreate={handleSecretCreate}
-                            // onSecretDelete={handleSecretDelete}
-                            onSecretUpdate={handleSecretUpdate}
-                            key={`overview-${key}-${index + 1}`}
-                            environments={visibleEnvs}
-                            secretKey={key.secretKey}
-                            getSecretByKey={getSecretByKey}
-                            scrollOffset={debouncedScrollOffset}
-                            // importedBy={importedBy}
-                            folderName={key?.folderName}
-                            projectId={currentProject.id}
-                            userAvailableEnvs={userAvailableEnvs}
-                            secrets={sec?.secrets}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </TBody>
-                  <TFoot>
-                    <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
-                      <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
-                        <div
-                          className="w-full border border-mineshaft-600"
-                          style={{ height: "45px" }}
+                        <Th>Service</Th>
+                      </Tr>
+                      {collapseEnvironments && (
+                        <HeaderResizer
+                          onMouseDown={handleMouseDown}
+                          isActive={isResizing}
+                          scrollOffset={scrollOffset}
+                          heightOffset={(tableRef.current?.clientTop ?? 0) + headerHeight - 2.5}
                         />
-                      </Td>
-                    </Tr>
-                  </TFoot>
-                </Table>
-              </TableContainer>
-              {/* {totalCount > 0 && (
-          <Pagination
-            startAdornment={
-              <SecretTableResourceCount
-                dynamicSecretCount={totalDynamicSecretCount}
-                secretCount={totalSecretCount}
-                folderCount={totalFolderCount}
-                importCount={totalImportCount}
-                secretRotationCount={totalSecretRotationCount}
-              />
-            }
-            className="rounded-b-md border-t border-solid border-t-mineshaft-600"
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={handlePerPageChange}
-          />
-        )} */}
-            </div>
-          </>
-        );
-      })}
+                      )}
+                    </THead>
+                    <TBody>
+                      {visibleEnvs.length > 0 && (
+                        <>
+                          {filter?.map((key, index) => (
+                            <MappingSecretOverviewTableRow
+                              isSelected={Boolean(selectedEntries.secret[key])}
+                              onToggleSecretSelect={() =>
+                                toggleSelectedEntry(EntryType.SECRET, key)
+                              }
+                              secretPath={key.folderName == "root" ? "/" : "/" + key.folderName}
+                              onSecretUpdate={handleSecretUpdate}
+                              key={`overview-${key}-${index + 1}`}
+                              environments={visibleEnvs}
+                              secretKey={key.secretKey}
+                              getSecretByKey={getSecretByKey}
+                              scrollOffset={debouncedScrollOffset}
+                              folderName={key?.folderName}
+                              projectId={currentProject.id}
+                              userAvailableEnvs={userAvailableEnvs}
+                              secrets={sec?.secrets}
+                              canReadSecretValue={canReadSecretValue}
+                              blurClass={blurClass}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </TBody>
+                    <TFoot>
+                      <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
+                        <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
+                          <div
+                            className="w-full border border-mineshaft-600"
+                            style={{ height: "45px" }}
+                          />
+                        </Td>
+                      </Tr>
+                    </TFoot>
+                  </Table>
+                </TableContainer>
+              </div>
+            </>
+          );
+        })
+      ) : (
+        <div>None secrets with same value</div>
+      )}
     </div>
   );
 };

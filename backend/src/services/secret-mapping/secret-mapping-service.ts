@@ -47,18 +47,49 @@ export const secretMappingServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    const mappingSecret = await secretMappingDAL.getAllSecretMappingInProject(projectId);
-    console.log("projectId", projectId);
-    console.log("mappingSecret", mappingSecret);
+    let mappingSecret = await secretMappingDAL.getAllSecretMappingInProject(projectId);
+
+    let groupMappingSecret: any[] = [];
+    const updated = [];
+    for (const sec of mappingSecret) {
+      let service = await secretMappingDAL.getServicesOfMappingSecret(sec.id);
+      let env = service[0].environment;
+      let slug = service[0].slug;
+
+      const secrets = await secretDAL.getSecretsByMappingId(sec.id);
+      const returnSecrets = secrets.map((secret) => {
+        return reshapeBridgeSecret(projectId, secret.env, secret.folderName, {
+          ...secret,
+          value: secret.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+            : "",
+          comment: secret.encryptedComment
+            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+            : "",
+          folderName: secret.folderName,
+          env: secret.env,
+          secretKey: secret.secretKey,
+          secretPath: `/${secret.folderName}`,
+        });
+      });
+      updated.push({
+        ...sec,
+        services: service,
+        environment: env,
+        slug: slug,
+        secrets: returnSecrets
+      });
+    }
+
+    mappingSecret = updated;
+
 
     const returnSecret = mappingSecret.map((secret) => {
-      console.log(secret.value);
       return {
         ...secret,
         value: secret.value ? secretManagerDecryptor({ cipherTextBlob: secret.value }).toString() : ""
       };
     });
-    console.log("returnSecret", returnSecret);
 
     return returnSecret;
   };
@@ -85,7 +116,6 @@ export const secretMappingServiceFactory = ({
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const { mappingSecret, secrets } = await secretMappingDAL.getSecretsAndMappingSecretInProject(mappingId);
-    console.log("mappingSecret", mappingSecret);
 
     const returnMappingSecret = {
       ...mappingSecret,
@@ -93,7 +123,7 @@ export const secretMappingServiceFactory = ({
     };
 
     const returnSecrets = secrets.map((secret) => {
-      return reshapeBridgeSecret(projectId, secret.env, secretPath, {
+      return reshapeBridgeSecret(projectId, secret.environment, secretPath, {
         ...secret,
         value: secret.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
@@ -107,7 +137,6 @@ export const secretMappingServiceFactory = ({
         secretPath: secretPath
       });
     });
-    console.log("returnSecrets", returnSecrets);
 
     return {
       returnMappingSecret,
@@ -134,8 +163,6 @@ export const secretMappingServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     // encrypt value
-    console.log("project id", projectId);
-    console.log("input secret", secrets);
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
@@ -143,7 +170,6 @@ export const secretMappingServiceFactory = ({
 
     const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
 
-    console.log("secrets.secrets", secrets);
     let newMappingSecret = await secretMappingDAL.createSecretMapping({
       key: secretMappingKey,
       value: encryptedValue
@@ -151,11 +177,9 @@ export const secretMappingServiceFactory = ({
     let mappingId = newMappingSecret.id;
 
     for (const secretId of secrets) {
-      console.log("secretId", secretId);
-      console.log("mappingId", mappingId);
+
 
       const update = await secretDAL.updateMappingIdById(secretId, mappingId);
-      console.log("update:", update);
     }
 
     return "Created";
@@ -179,8 +203,7 @@ export const secretMappingServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     // encrypt value
-    console.log("project id", projectId);
-    console.log("input secret", inputSecret);
+
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -191,7 +214,6 @@ export const secretMappingServiceFactory = ({
     let mappingSecret;
     let mappingSecretId: string;
     const oldMappingSecret = await secretMappingDAL.findOneByKey(inputSecret.secretKey);
-    console.log("oldMappingSecret", oldMappingSecret);
 
     mappingSecretId = oldMappingSecret.id;
     mappingSecret = oldMappingSecret;
@@ -207,7 +229,16 @@ export const secretMappingServiceFactory = ({
       encryptedNewValue,
       mappingSecretId
     );
-    console.log("secrets", environment);
+    let service = await secretMappingDAL.getServicesOfMappingSecret(updateMappingSecret.id);
+    let env = service[0].environment;
+    let slug = service[0].slug;
+    let returnUpdateMappingSecret = {
+      ...updateMappingSecret,
+      services: service,
+      environment: env,
+      slug: slug
+    };
+
     const reshapedSecrets = secrets.map((secret) => {
       return reshapeBridgeSecret(projectId, secret.env, secretPath, {
         ...secret,
@@ -220,11 +251,10 @@ export const secretMappingServiceFactory = ({
         folderName: secret.folderName
       });
     });
-    console.log("reshapedSecrets", reshapedSecrets);
 
     return {
-      updateMappingSecret: {
-        ...updateMappingSecret,
+      returnUpdateMappingSecret: {
+        ...returnUpdateMappingSecret,
         value: updateMappingSecret.value
           ? secretManagerDecryptor({ cipherTextBlob: updateMappingSecret.value }).toString()
           : ""

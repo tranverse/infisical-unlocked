@@ -516,7 +516,6 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    console.log("secretNameaaaaa111", projectId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
@@ -1263,6 +1262,7 @@ export const secretServiceFactory = ({
       ...params
     });
 
+
     return secrets;
   };
 
@@ -1409,7 +1409,6 @@ export const secretServiceFactory = ({
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    console.log("pathpathpath", path);
 
     if (shouldUseSecretV2Bridge) {
       const { secrets, imports } = await secretV2BridgeService.getSecrets({
@@ -1683,8 +1682,7 @@ export const secretServiceFactory = ({
         });
       }
     }
-    console.log("bot key", botKey);
-    console.log("shouldUseSecretV2Bridge", shouldUseSecretV2Bridge);
+
 
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
@@ -1772,7 +1770,6 @@ export const secretServiceFactory = ({
         key: botKey,
         keySize: SymmetricKeySize.Bits128
       });
-    console.log("Secret value:", secretValueEncrypted);
     // find secret mapping
     let mappingId = "";
     const sameValueSecrets = await secretDAL.findSecretsWithSameValue(secretValueEncrypted);
@@ -2072,7 +2069,6 @@ export const secretServiceFactory = ({
     type,
     secretPath
   }: TDeleteSecretRawDTO) => {
-    console.log("secretNameaaaaa", secretName);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
@@ -2538,7 +2534,6 @@ export const secretServiceFactory = ({
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
-    console.log("projectidaaa", projectId);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
       actor === ActorType.USER
@@ -2694,6 +2689,7 @@ export const secretServiceFactory = ({
           })
         }
       );
+
 
       return decryptSecretRaw(
         {
@@ -3556,6 +3552,7 @@ export const secretServiceFactory = ({
       secretValue: v.secretValue
     }));
   };
+  // get secret with same value and environment
   const getSecretWithSameValueWithoutMappingSecret = async ({
     actorId,
     actor,
@@ -3577,29 +3574,32 @@ export const secretServiceFactory = ({
       projectId
     });
     const secrets = await secretDAL.getSecretsWithoutMappingIdInProject(projectId);
-
+    console.log("secretsssss", secrets)
     const sameValue: any[] = [];
     const valueMap = new Map<string, any[]>();
-
+    // console.log("secrets", secrets);
     for (const sec of secrets) {
       const value = secretManagerDecryptor({ cipherTextBlob: sec.encryptedValue }).toString();
-      if (!valueMap.has(value) && !valueMap.has()) {
-        valueMap.set(value, []);
+      const env = sec.env;
+      const key = `${value}-${env}`;
+      console.log("sec.env", sec.env);
+      if (!valueMap.has(key)) {
+        valueMap.set(key, []);
       }
-      valueMap.get(value)!.push(sec);
+      valueMap.get(key)!.push(sec);
     }
 
-    console.log(valueMap);
+    console.log("valueMap", valueMap);
 
     for (const [value, group] of valueMap.entries()) {
       if (group.length > 1) {
         sameValue.push(...group);
       }
     }
-    console.log(sameValue);
+    console.log("sameValue", sameValue);
 
     const returnSecrets = sameValue.map((secret) => {
-      return reshapeBridgeSecret(projectId, secret.env, secret.folderName, {
+      return reshapeBridgeSecret(projectId, secret.environment, secret.folderName, {
         ...secret,
         value: secret.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
@@ -3613,9 +3613,9 @@ export const secretServiceFactory = ({
         secretPath: secret.folderName
       });
     });
-    console.log("returnSecrets", returnSecrets);
+    console.log("gggg", returnSecrets);
     return returnSecrets;
-  };
+  }; 
 
   return {
     attachTags,

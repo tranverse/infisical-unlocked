@@ -34,30 +34,7 @@ type Props = {
   secretPath: string;
   environments: { name: string; slug: string }[];
   isSelected: boolean;
-  onToggleSecretSelect: (key: string) => void;
-  getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
-  onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (
-    env: string,
-    key: string,
-    value: string,
-    secretValueHidden: boolean,
-    type?: SecretType,
-    secretId?: string
-  ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
-  // isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
-  // getImportedSecretByKey: (
-  //   env: string,
-  //   secretName: string
-  // ) =>
-  //   | {
-  //       secret?: SecretV3RawSanitized;
-  //       secretPath: string;
-  //       environment: string;
-  //       environmentInfo?: ProjectEnv;
-  //     }
-  //   | undefined;
+  canReadSecretValue: boolean;
   scrollOffset: number;
   importedBy?: {
     environment: { name: string; slug: string };
@@ -71,6 +48,7 @@ type Props = {
   projectId: string;
   userAvailableEnvs: [];
   secrets: [];
+  blurClass: string;
 };
 
 export const MappingSecretOverviewTableRow = ({
@@ -82,7 +60,7 @@ export const MappingSecretOverviewTableRow = ({
   onSecretCreate,
   onSecretDelete,
   // isImportedSecretPresentInEnv,
-  // getImportedSecretByKey,
+  canReadSecretValue,
   scrollOffset,
   onToggleSecretSelect,
   isSelected,
@@ -90,7 +68,8 @@ export const MappingSecretOverviewTableRow = ({
   folderName,
   projectId,
   userAvailableEnvs,
-  secrets
+  secrets,
+  blurClass
 }: Props) => {
   const {
     secretImports,
@@ -102,19 +81,15 @@ export const MappingSecretOverviewTableRow = ({
     path: secretPath,
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
-  // console.log(sec)
   const [isFormExpanded, setIsFormExpanded] = useToggle();
-  const totalCols = environments.length + 1; // secret key row
+  const totalCols = environments.length + 1; 
   const [isSecretVisible, setIsSecretVisible] = useToggle();
-  console.log(folderName);
   const { permission } = useProjectPermission();
-  console.log(environments);
+  console.log(canReadSecretValue);
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
     importedSecret: { secret?: SecretV3RawSanitized } | undefined
   ) => {
-    console.log(secret);
-    console.log("importedSecret", importedSecret);
     const canEditSecretValue = permission.can(
       ProjectPermissionSecretActions.Edit,
       subject(ProjectPermissionSub.Secrets, {
@@ -130,7 +105,6 @@ export const MappingSecretOverviewTableRow = ({
     }
     return secret?.valueOverride || secret?.secretValue || importedSecret?.secret?.value || "";
   };
-  console.log(secrets)
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
@@ -158,72 +132,26 @@ export const MappingSecretOverviewTableRow = ({
                   icon={isFormExpanded ? faAngleDown : faKey}
                 />
               </div>
-              <div title={secretKey}>{secretKey}</div>
+              <div
+                title={secretKey}
+                className={`${!canReadSecretValue ? blurClass : "text-center"}`}
+              >
+                {secretKey}
+              </div>
             </div>
           </div>
         </Td>
         <Td>
-          <div className="h-full w-full border-r border-mineshaft-600 px-5 py-2.5 text-center">
+          <div
+            className={`h-full w-full border-r border-mineshaft-600 px-5 py-2.5 text-center ${!canReadSecretValue ? blurClass : "text-center"}`}
+          >
             <div className="text-white">
               <div>{folderName}</div>
             </div>
           </div>
         </Td>
-        {environments.map(({ slug }, i) => {
-          const secret = getSecretByKey(slug, secretKey, folderName, secrets);
-          console.log(secret);
-
-          const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
-          console.log("isSecretImported", isSecretImported);
-          const isSecretPresent = Boolean(secret);
-          console.log("isSecretPresent", isSecretPresent);
-
-          const isSecretEmpty = secret?.isEmpty;
-          console.log("isSecretEmpty", isSecretEmpty);
-
-          return (
-            <Td
-              key={`sec-overview-${slug}-${i + 1}-value`}
-              className={twMerge(
-                "border-r border-mineshaft-600 px-0 py-3 group-hover:bg-mineshaft-700",
-                isFormExpanded && "border-t-2 border-mineshaft-500",
-                (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
-                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-mineshaft-400" : "",
-                !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
-              )}
-            >
-              <div className="mx-auto flex w-[0.03rem] justify-center">
-                <div className="flex justify-center">
-                  {!isSecretEmpty && (
-                    <Tooltip
-                      center
-                      content={
-                        // eslint-disable-next-line no-nested-ternary
-                        isSecretPresent
-                          ? "Present secret"
-                          : isSecretImported
-                            ? "Imported secret"
-                            : "Missing secret"
-                      }
-                    >
-                      <FontAwesomeIcon
-                        // eslint-disable-next-line no-nested-ternary
-                        icon={isSecretPresent ? faCheck : isSecretImported ? faFileImport : faXmark}
-                      />
-                    </Tooltip>
-                  )}
-                  {isSecretEmpty && (
-                    <Tooltip content="Empty value">
-                      <FontAwesomeIcon size="sm" icon={faCircle} className="text-yellow" />
-                    </Tooltip>
-                  )}
-                </div>
-              </div>
-            </Td>
-          );
-        })}
       </Tr>
-      {isFormExpanded && (
+      {/* {isFormExpanded && (
         <Tr>
           <Td
             colSpan={totalCols + 1}
@@ -289,7 +217,7 @@ export const MappingSecretOverviewTableRow = ({
             </div>
           </Td>
         </Tr>
-      )}
+      )} */}
     </>
   );
 };

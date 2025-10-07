@@ -96,6 +96,7 @@ export const secretMappingDALFactory = (db: TDbClient) => {
       .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .select(selectAllTableCols(TableName.SecretV2))
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
       .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
       .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
 
@@ -103,6 +104,30 @@ export const secretMappingDALFactory = (db: TDbClient) => {
       mappingSecret,
       secrets
     };
+  };
+
+  const getServicesOfMappingSecret = async (mappingId: string) => {
+    const services = await db(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.mappingId`, mappingId)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("slug"))
+      .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
+    return services;
+  };
+
+  const getAllSecretMappingInProjectAndEnvironment = async (projectId: string, environment: string) => {
+    const secretMappings = await db
+      .replicaNode()(TableName.SecretMapping)
+      .distinct(`${TableName.SecretMapping}.id`)
+      .join(`${TableName.SecretV2}`, `${TableName.SecretMapping}.id`, `${TableName.SecretV2}.mappingId`)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .where(`${TableName.Environment}.projectId`, projectId)
+      .where(`${TableName.Environment}.slug`, environment)
+      .select(selectAllTableCols(TableName.SecretMapping));
+    return secretMappings;
   };
 
   return {
@@ -116,6 +141,8 @@ export const secretMappingDALFactory = (db: TDbClient) => {
     findOneByValue,
     findOneByKey,
     updateMappingSecretValue,
-    getSecretsAndMappingSecretInProject
+    getSecretsAndMappingSecretInProject,
+    getServicesOfMappingSecret,
+    getAllSecretMappingInProjectAndEnvironment
   };
 };

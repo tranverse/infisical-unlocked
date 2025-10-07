@@ -89,7 +89,7 @@ export const SecretOverviewTableRow = ({
   const [isSecretVisible, setIsSecretVisible] = useToggle();
 
   const { permission } = useProjectPermission();
-
+  console.log(permission)
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
     importedSecret: { secret?: SecretV3RawSanitized } | undefined
@@ -109,7 +109,7 @@ export const SecretOverviewTableRow = ({
     }
     return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
   };
-
+  // console.log("isHoverable", isHoverable)
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">

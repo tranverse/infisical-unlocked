@@ -967,17 +967,18 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   // find secret with same value
-  const getAllSecretInProjectAndNotInFolder = async (projectId: string, folderId: string) => {
+  const getAllSecretInProjectAndNotInFolder = async (projectId: string, folderId: string, enviroment: string) => {
     const secretValues = await db
-      .replicaNode()(TableName.SecretV2 + "")
+      .replicaNode()(TableName.SecretV2)
       .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .where(`${TableName.Environment}.projectId`, projectId)
+      .where(`${TableName.Environment}.slug`, enviroment)
       .where(`${TableName.SecretFolder}.id`, "!=", folderId)
       .select(db.ref("id").withSchema(TableName.SecretV2).as("secretId"))
       .select(db.ref("mappingId").withSchema(TableName.SecretV2))
-      .select(db.ref("encryptedValue").withSchema(TableName.SecretV2));
-
+      .select(db.ref("encryptedValue").withSchema(TableName.SecretV2))
+      .select(db.ref("slug").withSchema(TableName.Environment));
     return secretValues;
   };
 
@@ -1000,7 +1001,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   const getSecretsByMappingId = async (mappingId: string) => {
-    const secrets = await db.replicaNode()(TableName.SecretV2).where(`${TableName.SecretV2}.mappingId`, mappingId);
+    const secrets = await db(TableName.SecretV2)
+      .where(`${TableName.SecretV2}.mappingId`, mappingId)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .select(selectAllTableCols(TableName.SecretV2))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
+      .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
     return secrets;
   };
 
@@ -1019,8 +1026,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       .where(`${TableName.SecretV2}.id`, "!=", secretId);
     return secrets;
   };
-
-
 
   return {
     ...secretOrm,
@@ -1047,6 +1052,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     getSecretsByMappingIdAndNotInSecretId,
     getSecretsByMappingId,
     getAllSecretValueInOneService,
-    getAllSecretValueInOneServiceAndExceptCurrentSecret,
+    getAllSecretValueInOneServiceAndExceptCurrentSecret
   };
 };

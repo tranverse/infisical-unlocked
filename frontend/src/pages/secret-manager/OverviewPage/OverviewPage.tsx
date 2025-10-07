@@ -316,7 +316,6 @@ export const OverviewPage = () => {
     folders,
     dynamicSecrets,
     secretRotations,
-    mappingSecrets, // mapping secret
     sameValueSecrets,
     totalFolderCount,
     totalSecretCount,
@@ -332,7 +331,8 @@ export const OverviewPage = () => {
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
-
+  console.log(secrets);
+  console.log("totalUniqueSecretImportsInPage", totalUniqueSecretsInPage);
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
@@ -361,16 +361,14 @@ export const OverviewPage = () => {
     useDynamicSecretOverview(dynamicSecrets);
 
   // mapping secret
-  const { mappingKeys, getMappingValue } = useMappingSecretOverview(mappingSecrets);
   const {
     secretRotationNames,
     isSecretRotationPresentInEnv,
     getSecretRotationByName,
     getSecretRotationStatusesByName
   } = useSecretRotationOverview(secretRotations);
-
   const { secKeys, getEnvSecretKeyCount } = useSecretOverview(secrets || []);
-
+  console.log(secKeys);
   const getSecretByKey = useCallback(
     (env: string, key: string) => {
       const sec = secrets?.find((s) => s.env === env && s.key === key);
@@ -382,7 +380,7 @@ export const OverviewPage = () => {
   const { data: tags } = useGetWsTags(
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
-
+  console.log("tags", tags);
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
@@ -653,21 +651,6 @@ export const OverviewPage = () => {
     });
   };
 
-  const handleMappingSecretClick = (mappingId: string) => {
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, { filter, searchFilter });
-      return curr;
-    });
-
-    navigate({
-      to: "/projects/secret-management/$projectId/mapping-secrets/$mappingId",
-      params: {
-        projectId,
-        mappingId: mappingId
-      }
-    });
-  };
 
   const handleExploreEnvClick = async (slug: string) => {
     if (secretPath !== "/") {
@@ -927,15 +910,6 @@ export const OverviewPage = () => {
       </div>
     );
   }
-
-  const handleSecretWithSameValue = () => {
-    navigate({
-      to: "/projects/secret-management/$projectId/secret-value",
-      params: {
-        projectId
-      }
-    });
-  };
 
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
   // This is needed to also show imports from other paths – right now those are missing.
@@ -1262,7 +1236,6 @@ export const OverviewPage = () => {
                   className="sticky top-0 z-20 border-0"
                   style={{ height: collapseEnvironments ? headerHeight : undefined }}
                 >
-                  {showSameValue && <Th>Value</Th>}
                   <Th
                     className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
                     style={{ height: collapseEnvironments ? headerHeight : undefined }}
@@ -1334,7 +1307,6 @@ export const OverviewPage = () => {
                       </Tooltip>
                     </div>
                   </Th>
-                  {showSameValue && <Th>Service</Th>}
                   {visibleEnvs?.map(({ name, slug }, index) => {
                     const envSecKeyCount = getEnvSecretKeyCount(slug);
                     const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
@@ -1554,16 +1526,6 @@ export const OverviewPage = () => {
                         }
                       />
                     ))}
-                    {/* mapping secret */}
-                    {secretPath == "/" &&
-                      mappingKeys.map((mappingKey, index) => (
-                        <SecretOverviewMappingSecretRow
-                          mappingSecretKey={mappingKey}
-                          getMappingValue={getMappingValue}
-                          key={`overview-${mappingKey}-${index + 1}`}
-                          onClick={handleMappingSecretClick}
-                        />
-                      ))}
                     {secKeys.map((key, index) => (
                       <SecretOverviewTableRow
                         isSelected={Boolean(selectedEntries.secret[key])}
@@ -1605,17 +1567,7 @@ export const OverviewPage = () => {
                         "flex w-full items-center border-r border-t border-mineshaft-600 p-4 text-sm italic"
                       )}
                       style={{ height: "45px" }}
-                    >
-                      {secretPath == "/" && sameValueSecrets?.length > 0 && (
-                        <p
-                          className="cursor-pointer text-yellow-300 underline hover:text-blue-400"
-                          style={{ fontSize: "13px" }}
-                          onClick={handleSecretWithSameValue}
-                        >
-                          View secret with same value
-                        </p>
-                      )}
-                    </div>
+                    ></div>
                   </Td>
                   {visibleEnvs?.map(({ name, slug }, i) => (
                     <Td

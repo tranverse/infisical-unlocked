@@ -34,7 +34,7 @@ export const SecretRotationSecretRow = ({
       enabled: isFieldFocused && Boolean(secret)
     }
   );
-
+  console.log("secretValue", secretValue)
   const getValue = () => {
     if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
 

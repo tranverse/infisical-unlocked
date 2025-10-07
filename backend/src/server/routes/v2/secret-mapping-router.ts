@@ -10,7 +10,7 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { removeTrailingSlash } from "@app/lib/fn";
 
 export const registerSecretMappingRouter = async (server: FastifyZodProvider) => {
-  // secret mapping
+  // update secret mapping
   server.route({
     method: "PATCH",
     url: "/:secretKey",
@@ -33,12 +33,23 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          updateMappingSecret: mappingSecretSchema,
+          updateMappingSecret: mappingSecretSchema.omit({
+            environment: z.string(),
+            services: z.array(
+              z.object({
+                slug: z.string(),
+                folderName: z.string(),
+                environment: z.string()
+              })
+            ),
+            secrets: z.array(secretRawSchema)
+          }),
           secrets: z.array(
             secretRawSchema.extend({
               folderName: z.string().trim()
             })
-          )
+          ),
+          secrets: z.array(secretRawSchema)
         })
       }
     },
@@ -58,7 +69,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       });
 
       return {
-        updateMappingSecret: secretOperation.updateMappingSecret,
+        updateMappingSecret: secretOperation.returnUpdateMappingSecret,
         secrets: secretOperation.secrets
       };
     }
@@ -135,7 +146,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       };
     }
   });
-  // gett all mapping secret
+  // get mapping secret and secret secret
   server.route({
     method: "GET",
     url: "/all-secrets/:mappingId",
@@ -155,7 +166,17 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          mappingSecrets: mappingSecretSchema,
+          mappingSecrets: mappingSecretSchema.omit({
+            environment: z.string(),
+            services: z.array(
+              z.object({
+                slug: z.string(),
+                folderName: z.string(),
+                environment: z.string()
+              })
+            ),
+            secrets: z.array(secretRawSchema)
+          }),
           secrets: z.array(
             secretRawSchema.extend({
               folderName: z.string().trim(),

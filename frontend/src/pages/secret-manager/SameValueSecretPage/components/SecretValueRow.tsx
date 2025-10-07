@@ -23,7 +23,6 @@ export const SecretValueRow = ({ defaultValue }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
   ] as const);
-  console.log("defaultValue", defaultValue);
 
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);

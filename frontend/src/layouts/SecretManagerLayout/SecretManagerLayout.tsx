@@ -99,8 +99,9 @@ export const SecretManagerLayout = () => {
                         </MenuItem>
                       )}
                     </Link>
+                    {/* reference secrets */}
                     <Link
-                      to="/projects/secret-management/$projectId/integrations"
+                      to="/projects/secret-management/$projectId/reference-secrets"
                       params={{
                         projectId: currentProject.id
                       }}

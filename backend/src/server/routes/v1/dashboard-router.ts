@@ -138,7 +138,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional(),
-          mappingSecrets: z.array(mappingSecretSchema),
           sameValueSecrets: z.array(
             secretRawSchema.extend({
               folderName: z.string(),
@@ -242,11 +241,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
         | undefined;
 
-      // mapping secret
-
-      let mappingSecrets:
-        | Awaited<ReturnType<typeof server.services.secretMapping.getMappingSecretsInProject>>
-        | undefined;
       let sameValueSecrets: Awaited<ReturnType<typeof server.services.secret.getSecretWithSameValueWithoutMappingSecret>> | undefined;
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
@@ -254,13 +248,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let totalImportCount: number | undefined;
       let totalSecretRotationCount: number | undefined;
 
-      mappingSecrets = await server.services.secretMapping.getMappingSecretsInProject({
-        projectId: projectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
       sameValueSecrets = await server.services.secret.getSecretWithSameValueWithoutMappingSecret({
         projectId: projectId,
         actorId: req.permission.id,
@@ -573,7 +560,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       return {
         folders,
         dynamicSecrets,
-        mappingSecrets, // mapping secrets
         sameValueSecrets,
         secrets,
         imports,

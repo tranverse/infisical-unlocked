@@ -20,7 +20,6 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-
   const bulkUpdate = async (
     data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
 
@@ -147,8 +146,6 @@ export const secretDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "get all secret" });
     }
   };
-
-
 
   const getSecretTags = async (secretId: string, tx?: Knex) => {
     try {
@@ -384,13 +381,11 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-
   // find secret with same value
-  const findSecretsWithSameValue  = async (value: string) => {
-    const secrets = await (db.replicaNode())(TableName.SecretV2)
-      .select(selectAllTableCols(TableName.SecretV2));
+  const findSecretsWithSameValue = async (value: string) => {
+    const secrets = await db.replicaNode()(TableName.SecretV2).select(selectAllTableCols(TableName.SecretV2));
     return secrets;
-  }
+  };
 
   const getSecretsWithoutMappingIdInProject = async (projectId: string) => {
     const secrets = await db
@@ -400,6 +395,7 @@ export const secretDALFactory = (db: TDbClient) => {
       .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .where(`${TableName.Environment}.projectId`, projectId)
       .select(selectAllTableCols(TableName.SecretV2))
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
       .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
       .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
     return secrets;
@@ -423,6 +419,4 @@ export const secretDALFactory = (db: TDbClient) => {
     findSecretsWithSameValue,
     getSecretsWithoutMappingIdInProject
   };
-
-
 };
