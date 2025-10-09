@@ -3567,36 +3567,30 @@ export const secretServiceFactory = ({
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
-    });
+    });  
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
     const secrets = await secretDAL.getSecretsWithoutMappingIdInProject(projectId);
-    console.log("secretsssss", secrets)
     const sameValue: any[] = [];
     const valueMap = new Map<string, any[]>();
-    // console.log("secrets", secrets);
     for (const sec of secrets) {
       const value = secretManagerDecryptor({ cipherTextBlob: sec.encryptedValue }).toString();
       const env = sec.env;
       const key = `${value}-${env}`;
-      console.log("sec.env", sec.env);
       if (!valueMap.has(key)) {
         valueMap.set(key, []);
       }
       valueMap.get(key)!.push(sec);
     }
 
-    console.log("valueMap", valueMap);
-
     for (const [value, group] of valueMap.entries()) {
       if (group.length > 1) {
         sameValue.push(...group);
       }
     }
-    console.log("sameValue", sameValue);
 
     const returnSecrets = sameValue.map((secret) => {
       return reshapeBridgeSecret(projectId, secret.environment, secret.folderName, {
@@ -3613,7 +3607,6 @@ export const secretServiceFactory = ({
         secretPath: secret.folderName
       });
     });
-    console.log("gggg", returnSecrets);
     return returnSecrets;
   }; 
 

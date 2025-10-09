@@ -23,7 +23,10 @@ import { twMerge } from "tailwind-merge";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilter, faCheckCircle, faRotate } from "@fortawesome/free-solid-svg-icons";
 import { useGetSameValueSecretWithoutMappingSecret } from "../../../hooks/api/secrets/queries";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionReferenceSecretActions
+} from "@app/context/ProjectPermissionContext/types";
 import { subject } from "@casl/ability";
 import { ProjectPermissionSub } from "@app/context";
 export const ReferenceSecretPage = () => {
@@ -40,7 +43,6 @@ export const ReferenceSecretPage = () => {
   const { data: sameValueSecrets } = useGetSameValueSecretWithoutMappingSecret({
     projectId: currentProject.id
   });
-  console.log(sameValueSecrets);
   const secretPath = "/";
 
   const handleClickReferenceSecret = (mappingId: string) => {
@@ -53,6 +55,13 @@ export const ReferenceSecretPage = () => {
     ProjectPermissionSecretActions.ReadValue,
     subject(ProjectPermissionSub.Secrets, {})
   );
+
+  const canReadReferenceSecret = permission.can(
+    ProjectPermissionReferenceSecretActions.ReadValue,
+    subject(ProjectPermissionSub.ReferenceSecrets, {})
+  );
+
+  console.log("canReadReferenceSecret", canReadReferenceSecret)
 
   console.log(canReadEnv);
   const handleSecretWithSameValue = () => {
@@ -76,7 +85,6 @@ export const ReferenceSecretPage = () => {
     );
   };
 
-  console.log(refeneceSecrets);
 
   useEffect(() => {
     if (!refeneceSecrets) return;

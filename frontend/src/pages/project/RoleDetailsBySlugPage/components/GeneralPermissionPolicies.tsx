@@ -81,7 +81,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
     control,
     name: `permissions.${subject}`
   });
-
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
   const watchFields = useWatch<TFormSchema>({
     control,

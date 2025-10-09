@@ -262,7 +262,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secret };
     }
   });
-
+  // get secret
   server.route({
     method: "GET",
     url: "/:secretName",
@@ -371,6 +371,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // create secret
   server.route({
     method: "POST",
     url: "/:secretName",
@@ -467,7 +468,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
-
         return { approval: secretOperation.approval };
       }
 
@@ -489,6 +489,25 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (secret.mappingId) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.projectId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.CREATE_MAPPING_SECRET,
+            metadata: {
+              environment: req.body.environment,
+              referenceId: secret.mappingId,
+              secret: {
+                secretId: secret.id,
+                secretKey: secret.key,
+                secretPath: secret.secretPath
+              }
+            }
+          }
+        });
+      }
+
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretCreated,
         distinctId: getTelemetryDistinctId(req),
@@ -506,7 +525,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secret };
     }
   });
-
+  // update secret
   server.route({
     method: "PATCH",
     url: "/:secretName",
@@ -649,7 +668,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secret };
     }
   });
-
+  // delete secret
   server.route({
     method: "DELETE",
     url: "/:secretName",
@@ -758,7 +777,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secret };
     }
   });
-
+  // move secret
   server.route({
     method: "POST",
     url: "/move",
@@ -815,7 +834,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
-
+  // create many secret
   server.route({
     method: "POST",
     url: "/batch",
@@ -941,7 +960,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secrets };
     }
   });
-
+  // update many secret
   server.route({
     method: "PATCH",
     url: "/batch",
@@ -1115,7 +1134,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return { secrets };
     }
   });
-
+  // delete many secret
   server.route({
     method: "DELETE",
     url: "/batch",
@@ -1337,7 +1356,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       return message;
     }
   });
-
+  // get same value secret
   server.route({
     method: "GET",
     url: "/same-value/:projectId",
@@ -1372,7 +1391,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
         // environment: req.params.environment
       });
-
+      await server.services.auditLog.createAuditLog({
+        projectId: req.params.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SAME_VALUE_SECRETS,
+          metadata: {
+            numberOfSameValueSecret: sameValueSecret.length
+          }
+        }
+      });
       return {
         sameValueSecret
       };

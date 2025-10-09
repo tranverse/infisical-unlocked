@@ -69,7 +69,7 @@ export const secretMappingServiceFactory = ({
           folderName: secret.folderName,
           env: secret.env,
           secretKey: secret.secretKey,
-          secretPath: `/${secret.folderName}`,
+          secretPath: `/${secret.folderName}`
         });
       });
       updated.push({
@@ -82,7 +82,6 @@ export const secretMappingServiceFactory = ({
     }
 
     mappingSecret = updated;
-
 
     const returnSecret = mappingSecret.map((secret) => {
       return {
@@ -175,14 +174,12 @@ export const secretMappingServiceFactory = ({
       value: encryptedValue
     });
     let mappingId = newMappingSecret.id;
-
+    let environment = secrets[0].environment;
     for (const secretId of secrets) {
-
-
       const update = await secretDAL.updateMappingIdById(secretId, mappingId);
     }
 
-    return "Created";
+    return { enenvironment, mappingId, key: secretMappingKey };
   };
   const updateValueMappingSecret = async ({
     actor,
@@ -203,7 +200,6 @@ export const secretMappingServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     // encrypt value
-
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -280,10 +276,12 @@ export const secretMappingServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    const environment = await secretMappingDAL.getEnvironmentOfMappingSecret(mappingId);
     const mappingSecretToDelete = await secretMappingDAL.findById(mappingId);
+
     if (!mappingSecretToDelete) throw new NotFoundError({ message: "Mapping secret not found" });
     const mappingSecret = await secretMappingDAL.deleteSecretMappingById(mappingId);
-    return "Deleted";
+    return { mappingId, environment, key: mappingSecret.key };
   };
 
   return {

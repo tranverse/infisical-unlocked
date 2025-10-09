@@ -9,94 +9,7 @@ import { PendingAction } from "../secretFolders/types";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "../secrets/queries";
 import { TUpdateSecretsV3DTO } from "../types";
-// export const useUpdateMappingSecret = () => {
-//   const queryClient = useQueryClient();
 
-//   return useMutation<object, object, TUpdateMappingSecretDTO>({
-//     mutationFn: async ({
-//       environment = "dev",
-//       value,
-//       projectId,
-//       secretPath ="/",
-//       newValue,
-//       secretKey = "",
-//       mappingId
-//     }) => {
-
-//       const { data } = await apiRequest.patch(`/api/v2/secret-mappings/${secretKey}`, {
-//         newValue,
-//         environment,
-//         secretPath,
-//         projectId,
-//         value,
-//         secretKey
-//       });
-//       return data;
-//     },
-//     onSuccess: (_, { environment, projectId, secretPath, mappingId, secretKey }) => {
-//       console.log(
-//         queryClient
-//           .getQueryCache()
-//           .getAll()
-//           .map((q) => q.queryKey)
-//       );
-//       queryClient.invalidateQueries({
-//         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: "/" })
-//       });
-//       queryClient.invalidateQueries(
-//         dashboardKeys.getSecretValue({
-//           environment,
-//           secretPath,
-//           secretKey: secretKey,
-//           isOverride: false
-//         })
-//       );
-//       queryClient.invalidateQueries(
-//         dashboardKeys.getProjectSecretsOverview({
-//           projectId,
-//           secretPath,
-//           environments: ["dev", "prod", "stage"]
-//         })
-//       );
-//       queryClient.invalidateQueries({
-//         queryKey: secretKeys.getProjectSecret({
-//           projectId,
-//           environment: "env", // môi trường bạn đang dùng
-//           secretPath: "/",
-//           viewSecretValue: true
-//         })
-//       });
-//       queryClient.invalidateQueries({
-//         queryKey: dashboardKeys.getSecretValuesRoot()
-//       });
-//       queryClient.invalidateQueries({
-//         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-//       });
-//       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
-//       queryClient.invalidateQueries(mappingSecretKeys.all);
-
-//       queryClient.invalidateQueries({
-//         queryKey: mappingSecretKeys.detail({ projectId, mappingId })
-//       });
-//       queryClient.invalidateQueries({
-//         queryKey: mappingSecretKeys.list({ projectId })
-//       });
-//       queryClient.invalidateQueries({
-//         queryKey: mappingSecretKeys.getSecretImportSecrets({
-//           projectId,
-//           environment,
-//           path: secretPath
-//         })
-//       });
-//       queryClient.invalidateQueries({
-//         queryKey: dashboardKeys.getDashboardSecrets({
-//           projectId,
-//           secretPath: secretPath ?? "/"
-//         })
-//       });
-//     }
-//   });
-// };
 export const useUpdateMappingSecret = ({
   options
 }: {
@@ -362,7 +275,7 @@ export const invalidateMappingSecrets = ({
   }
 
   // Invalidate mapping secret queries
-  console.log("♻️ Invalidate mapping secrets:", mappingSecret.id);
+  console.log(" Invalidate mapping secrets:", mappingSecret.id);
 
   queryClient.invalidateQueries({
     queryKey: mappingSecretKeys.all,

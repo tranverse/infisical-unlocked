@@ -24,7 +24,8 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  ProjectPermissionReferenceSecretActions
 } from "@app/ee/services/permission/project-permission";
 
 const buildAdminPermissionRules = () => {
@@ -49,7 +50,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
     ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHostGroups
+    ProjectPermissionSub.SshHostGroups,
   ].forEach((el) => {
     can(
       [
@@ -168,6 +169,17 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionSecretActions.Delete
     ],
     ProjectPermissionSub.Secrets
+  );
+
+  can(
+    // reference secrets
+    [
+      ProjectPermissionReferenceSecretActions.ReadValue,
+      ProjectPermissionReferenceSecretActions.Create,
+      ProjectPermissionReferenceSecretActions.Edit,
+      ProjectPermissionReferenceSecretActions.Delete
+    ],
+    ProjectPermissionSub.ReferenceSecrets
   );
 
   can(
@@ -306,6 +318,16 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionSecretActions.Delete
     ],
     ProjectPermissionSub.Secrets
+  );
+  can(
+    // reference secret
+    [
+      ProjectPermissionReferenceSecretActions.ReadValue,
+      ProjectPermissionReferenceSecretActions.Edit,
+      ProjectPermissionReferenceSecretActions.Create,
+      ProjectPermissionReferenceSecretActions.Delete
+    ],
+    ProjectPermissionSub.ReferenceSecrets
   );
   can(
     [
@@ -528,6 +550,8 @@ const buildViewerPermissionRules = () => {
     [ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue],
     ProjectPermissionSub.Secrets
   );
+  // reference secret
+  can(ProjectPermissionReferenceSecretActions.ReadValue, ProjectPermissionSub.ReferenceSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);

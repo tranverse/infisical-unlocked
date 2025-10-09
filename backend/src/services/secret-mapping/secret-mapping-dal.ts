@@ -46,7 +46,25 @@ export const secretMappingDALFactory = (db: TDbClient) => {
   };
 
   const deleteSecretMappingById = async (id: string) => {
+    const record = await db(TableName.SecretMapping).where(`${TableName.SecretMapping}.id`, id).first();
+
+    if (!record) return null;
+
     await db(TableName.SecretMapping).where(`${TableName.SecretMapping}.id`, id).delete();
+
+    return record;
+  };
+
+  const getEnvironmentOfMappingSecret = async (mappingId: string) => {
+    const result = await db
+      .replicaNode()(TableName.SecretMapping)
+      .join(`${TableName.SecretV2}`, `${TableName.SecretMapping}.id`, `${TableName.SecretV2}.mappingId`)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .where(`${TableName.SecretMapping}.id`, mappingId)
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
+      .first();
+    return result.environment;
   };
 
   const generateSecretMappingKey = async () => {
@@ -143,6 +161,7 @@ export const secretMappingDALFactory = (db: TDbClient) => {
     updateMappingSecretValue,
     getSecretsAndMappingSecretInProject,
     getServicesOfMappingSecret,
-    getAllSecretMappingInProjectAndEnvironment
+    getAllSecretMappingInProjectAndEnvironment,
+    getEnvironmentOfMappingSecret
   };
 };

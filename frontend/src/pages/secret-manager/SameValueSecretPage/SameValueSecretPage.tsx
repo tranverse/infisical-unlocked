@@ -176,13 +176,11 @@ const Page = () => {
       const val = same.secretValue;
       const env = same.environment;
       const key = `${val}-${env}`;
-      console.log(key);
       if (!shape.has(key)) shape.set(key, []);
       shape.get(key).push(same);
     });
     return Array.from(shape, ([value, secrets]) => ({ value, secrets }));
   }, [sameValueSecrets]);
-  console.log(reshapedSameValue);
 
   const getEnvSecretKeyCount = (env: string, secrets) => {
     return (

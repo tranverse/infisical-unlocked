@@ -331,8 +331,6 @@ export const OverviewPage = () => {
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
-  console.log(secrets);
-  console.log("totalUniqueSecretImportsInPage", totalUniqueSecretsInPage);
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)

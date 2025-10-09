@@ -317,10 +317,8 @@ const Page = () => {
   }, [secrets]);
 
   const updateMappingSecret = useUpdateMappingSecret();
-  console.log(secrets);
 
   const handleSave = async (mappingKey: string, oldValue: string, mappingId: string) => {
-    console.log(secrets?.mappingSecret);
     try {
       updateMappingSecret.mutate({
         secretKey: mappingKey,

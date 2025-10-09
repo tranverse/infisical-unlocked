@@ -474,7 +474,7 @@ export const secretV2BridgeServiceFactory = ({
         }
       });
     }
-
+    console.log("secretcheck", secret)
     return reshapeBridgeSecret(
       projectId,
       environment,

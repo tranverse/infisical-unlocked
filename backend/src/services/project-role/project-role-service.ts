@@ -115,6 +115,7 @@ export const projectRoleServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
+
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     if (roleSlug !== "custom" && Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
       const [predefinedRole] = getPredefinedRoles({

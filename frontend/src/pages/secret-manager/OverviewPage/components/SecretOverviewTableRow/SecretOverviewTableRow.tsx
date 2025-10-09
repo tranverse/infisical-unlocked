@@ -109,7 +109,6 @@ export const SecretOverviewTableRow = ({
     }
     return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
   };
-  // console.log("isHoverable", isHoverable)
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">

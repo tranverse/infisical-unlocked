@@ -500,7 +500,17 @@ export enum EventType {
 
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
-  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value"
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+
+  //create mapping
+
+  CREATE_MAPPING_SECRET = "create-reference-secret",
+  UPDATE_MAPPING_SECRET = "update-reference-secret",
+  DELETE_MAPPING_SECRET = "delete-reference-secret",
+  GET_MAPPING_SECRET = "get-reference-secret",
+  GET_MAPPING_SECRETS = "get-reference-seccrets",
+  GET_SAME_VALUE_SECRETS = "get-same-value-secrets",
+  GET_SAME_VALUE_SECRET = "get-same-value-secret"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -691,6 +701,56 @@ interface DeleteSecretBatchEvent {
   };
 }
 
+// mapping secret
+interface CreateMappingSecretEvent {
+  type: EventType.CREATE_MAPPING_SECRET;
+  metadata: {
+    environment: string;
+    referenceId: string;
+    referenceKey: string;
+  };
+}
+interface UpdateMappingSecretEvent {
+  type: EventType.UPDATE_MAPPING_SECRET;
+  metadata: {
+    environment: string;
+    referenceId: string;
+    referenceKey: string;
+  };
+}
+
+interface DeleteMappingSecretEvent {
+  type: EventType.DELETE_MAPPING_SECRET;
+  metadata: {
+    environment: string;
+    referenceId: string;
+    referenceKey: string;
+  };
+}
+
+interface GetMappingSecretEvent {
+  type: EventType.GET_MAPPING_SECRET;
+  metadata: {
+    environment: string;
+    referenceId: string;
+    referenceKey: string;
+  };
+}
+interface GetMappingSecretsEvent {
+  type: EventType.GET_MAPPING_SECRETS;
+  metadata: {
+    numberOfReferenceSecrets: number;
+  };
+}
+
+interface GetSameValueSecretEvent {
+  type: EventType.GET_SAME_VALUE_SECRETS;
+  metadata: {
+    numberOfSameValueSecret: number;
+  };
+}
+
+////
 interface GetProjectKeyEvent {
   type: EventType.GET_PROJECT_KEY;
   metadata: {

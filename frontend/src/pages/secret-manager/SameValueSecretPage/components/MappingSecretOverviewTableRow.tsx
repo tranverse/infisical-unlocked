@@ -85,7 +85,6 @@ export const MappingSecretOverviewTableRow = ({
   const totalCols = environments.length + 1; 
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const { permission } = useProjectPermission();
-  console.log(canReadSecretValue);
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
     importedSecret: { secret?: SecretV3RawSanitized } | undefined
@@ -151,73 +150,7 @@ export const MappingSecretOverviewTableRow = ({
           </div>
         </Td>
       </Tr>
-      {/* {isFormExpanded && (
-        <Tr>
-          <Td
-            colSpan={totalCols + 1}
-            className={`bg-bunker-600 px-0 py-0 ${
-              isFormExpanded && "border-b-2 border-mineshaft-500"
-            }`}
-          >
-            <div className="ml-2 p-2" style={getExpandedRowStyle(scrollOffset)}>
-              <SecretRenameRow
-                secretKey={secretKey}
-                environments={environments}
-                secretPath={secretPath}
-                getSecretByKey={getSecretByKey}
-              />
-              <TableContainer>
-                <table className="secret-table">
-                  <thead>
-                    <tr className="h-10 border-b-2 border-mineshaft-600">
-                      <th
-                        style={{ padding: "0.5rem 1rem" }}
-                        className="min-table-row min-w-[11rem]"
-                      >
-                        Environment
-                      </th>
-                      <th style={{ padding: "0.5rem 1rem" }} className="border-none">
-                        Value
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="border-t-2 border-mineshaft-600">
-                    {environments.map(({ name, slug }) => {
-                      const secret = getSecretByKey(slug, secretKey, folderName, secrets);
-                      const isCreatable = !secret;
-                      const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
-                      const importedSecret = getImportedSecretByKey(slug, secretKey);
-                      const value = getDefaultValue(secret, importedSecret);
-                      console.log(value);
-
-                      return (
-                        <tr
-                          key={`secret-expanded-${slug}-${secretKey}`}
-                          className="hover:bg-mineshaft-700"
-                        >
-                          <td
-                            className="flex h-full items-center"
-                            style={{ padding: "0.25rem 1rem" }}
-                          >
-                            <div title={name} className="flex h-8 w-[8rem] items-center space-x-2">
-                              <span className="truncate">{name}</span>
-                            </div>
-                          </td>
-                          <td className="col-span-2 h-8 w-full">
-                            <SecretValueRow
-                              defaultValue={getDefaultValue(secret, importedSecret)}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </TableContainer>
-            </div>
-          </Td>
-        </Tr>
-      )} */}
+      
     </>
   );
 };

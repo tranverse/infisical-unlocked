@@ -27,7 +27,6 @@ const fetchSecretsAndMappingSecret = async ({
   const { data } = await apiRequest.get<TMappingSecretDTO>(
     `/api/v2/secret-mappings/all-secrets/${mappingId}?projectId=${projectId}`
   );
-  console.log(data);
   return { mappingSecret: data.mappingSecrets, secrets: data.secrets };
 };
 

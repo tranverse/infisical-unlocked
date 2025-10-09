@@ -38,7 +38,7 @@ import { SecretEventPermissionConditions } from "./SecretEventPermissionConditio
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
 import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
 import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
-
+import { ReferenceSecretPermissionConditions } from "./ReferenceSecretPermissionConditions";
 type Props = {
   roleSlug: string;
   isDisabled?: boolean;
@@ -48,13 +48,18 @@ export const renderConditionalComponents = (
   subject: ProjectPermissionSub,
   isDisabled?: boolean
 ) => {
-  if (subject === ProjectPermissionSub.Secrets)
+  if (subject === ProjectPermissionSub.Secrets) {
     return <SecretPermissionConditions isDisabled={isDisabled} />;
+  }
 
   if (subject === ProjectPermissionSub.DynamicSecrets)
     return <DynamicSecretPermissionConditions isDisabled={isDisabled} />;
 
   if (isConditionalSubjects(subject)) {
+    // reference secret
+    if (subject === ProjectPermissionSub.ReferenceSecrets) {
+      return <ReferenceSecretPermissionConditions isDisabled={isDisabled} />;
+    }
     if (subject === ProjectPermissionSub.Identity) {
       return <IdentityManagementPermissionConditions isDisabled={isDisabled} />;
     }
@@ -100,7 +105,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     currentProject?.id ?? "",
     roleSlug as string
   );
-
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
 
   const form = useForm<TFormSchema>({
@@ -161,7 +165,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
             <div>
               <h3 className="text-lg font-semibold text-mineshaft-100">Policies</h3>
               <p className="text-sm leading-3 text-mineshaft-400">
-                Configure granular access policies
+                Configure granular access policies123
               </p>
             </div>
             {isCustomRole && (
@@ -198,27 +202,30 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                 .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
-                .map((subject) => (
-                  <GeneralPermissionPolicies
-                    subject={subject}
-                    actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                    title={PROJECT_PERMISSION_OBJECT[subject].title}
-                    key={`project-permission-${subject}`}
-                    isDisabled={isDisabled}
-                    onShowAccessTree={
-                      [
-                        ProjectPermissionSub.Secrets,
-                        ProjectPermissionSub.SecretFolders,
-                        ProjectPermissionSub.DynamicSecrets,
-                        ProjectPermissionSub.SecretImports
-                      ].includes(subject)
-                        ? setShowAccessTree
-                        : undefined
-                    }
-                  >
-                    {renderConditionalComponents(subject, isDisabled)}
-                  </GeneralPermissionPolicies>
-                ))}
+                .map((subject) => {
+                  return (
+                    <GeneralPermissionPolicies
+                      subject={subject}
+                      actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                      title={PROJECT_PERMISSION_OBJECT[subject].title}
+                      key={`project-permission-${subject}`}
+                      isDisabled={isDisabled}
+                      onShowAccessTree={
+                        [
+                          ProjectPermissionSub.Secrets,
+                          // ProjectPermissionSub.ReferenceSecrets,
+                          ProjectPermissionSub.SecretFolders,
+                          ProjectPermissionSub.DynamicSecrets,
+                          ProjectPermissionSub.SecretImports
+                        ].includes(subject)
+                          ? setShowAccessTree
+                          : undefined
+                      }
+                    >
+                      {renderConditionalComponents(subject, isDisabled)}
+                    </GeneralPermissionPolicies>
+                  );
+                })}
             </div>
           </div>
         </FormProvider>

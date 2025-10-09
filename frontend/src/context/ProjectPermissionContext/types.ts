@@ -6,6 +6,13 @@ export enum ProjectPermissionActions {
   Edit = "edit",
   Delete = "delete"
 }
+// reference secret
+export enum ProjectPermissionReferenceSecretActions {
+  ReadValue = "readValue",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
 
 export enum ProjectPermissionCertificateActions {
   Read = "read",
@@ -208,7 +215,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.SecretEvents
-  | ProjectPermissionSub.AppConnections;
+  | ProjectPermissionSub.AppConnections
+  | ProjectPermissionSub.ReferenceSecrets; // reference secret
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -246,7 +254,7 @@ export type TPermissionCondition = Record<
       $elemMatch: Partial<TPermissionCondition>;
     }
 >;
-
+// detail permission
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -289,8 +297,14 @@ export enum ProjectPermissionSub {
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEvents = "secret-events",
-  AppConnections = "app-connections"
+  AppConnections = "app-connections",
+  ReferenceSecrets = "reference-secrets" // reference secret
 }
+
+//reference secret
+export type ReferenceSecretSubjectFields = {
+  environment: string;
+};
 
 export type SecretSubjectFields = {
   environment: string;
@@ -356,6 +370,14 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.Secrets
         | (ForcedSubject<ProjectPermissionSub.Secrets> & SecretSubjectFields)
+      )
+    ]
+  | [
+      // reference secret
+      ProjectPermissionReferenceSecretActions,
+      (
+        | ProjectPermissionSub.ReferenceSecrets
+        | (ForcedSubject<ProjectPermissionSub.ReferenceSecrets> & ReferenceSecretSubjectFields)
       )
     ]
   | [

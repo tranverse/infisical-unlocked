@@ -32,7 +32,8 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSshHostActions,
   TPermissionCondition,
-  TPermissionConditionOperators
+  TPermissionConditionOperators,
+  ProjectPermissionReferenceSecretActions // reference secret
 } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
@@ -64,6 +65,13 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
+});
+//reference secret
+const ReferenceSecretPolicyActionSchema = z.object({
+  [ProjectPermissionReferenceSecretActions.ReadValue]: z.boolean().optional(),
+  [ProjectPermissionReferenceSecretActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionReferenceSecretActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionReferenceSecretActions.Create]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -301,6 +309,13 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      // reference secret
+      [ProjectPermissionSub.ReferenceSecrets]: ReferenceSecretPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -427,7 +442,8 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.SecretEvents
-  | ProjectPermissionSub.AppConnections;
+  | ProjectPermissionSub.AppConnections
+  | ProjectPermissionSub.ReferenceSecrets; // referene secret
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -444,7 +460,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents ||
-  subject === ProjectPermissionSub.AppConnections;
+  subject === ProjectPermissionSub.AppConnections ||
+  subject === ProjectPermissionSub.ReferenceSecrets; //reference secret
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -523,6 +540,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
   permissions.forEach((permission) => {
     const { subject: caslSub, action, conditions, inverted } = permission;
+
     const subject = (typeof caslSub === "string" ? caslSub : caslSub[0]) as ProjectPermissionSub;
     if (!action.length) return;
 
@@ -553,7 +571,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SecretSyncs,
         ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEvents,
-        ProjectPermissionSub.AppConnections
+        ProjectPermissionSub.AppConnections,
+        ProjectPermissionSub.ReferenceSecrets //reference secret
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -691,6 +710,27 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+
+          return;
+        }
+        // reference secret
+        if (subject === ProjectPermissionSub.ReferenceSecrets) {
+          // if (!formVal[subject]) formVal[subject] = []; // thêm dòng này ✅
+
+          const canReadValue = action.includes(ProjectPermissionReferenceSecretActions.ReadValue);
+          console.log("canReadValue", canReadValue);
+          const canEdit = action.includes(ProjectPermissionReferenceSecretActions.Edit);
+          const canDelete = action.includes(ProjectPermissionReferenceSecretActions.Delete);
+          const canCreate = action.includes(ProjectPermissionReferenceSecretActions.Create);
+
+          formVal[subject]!.push({
+            readValue: canReadValue,
+            create: canCreate,
+            edit: canEdit,
+            delete: canDelete,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1113,7 +1153,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       });
     }
   });
-
   return formVal;
 };
 
@@ -1219,7 +1258,6 @@ export type TProjectPermissionObject = {
     }[];
   };
 };
-
 export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Secrets]: {
     title: "Secrets",
@@ -1253,6 +1291,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: ProjectPermissionSecretActions.Edit },
       { label: "Remove", value: ProjectPermissionSecretActions.Delete },
       { label: "Create", value: ProjectPermissionSecretActions.Create }
+    ]
+  },
+  [ProjectPermissionSub.ReferenceSecrets]: {
+    title: "Reference Secrets",
+    actions: [
+      { label: "Read Value", value: ProjectPermissionReferenceSecretActions.ReadValue },
+      { label: "Modify", value: ProjectPermissionReferenceSecretActions.Edit },
+      { label: "Remove", value: ProjectPermissionReferenceSecretActions.Delete },
+      { label: "Create", value: ProjectPermissionReferenceSecretActions.Create }
     ]
   },
   [ProjectPermissionSub.SecretFolders]: {
@@ -1761,7 +1808,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
-  [ProjectPermissionSub.SecretEvents]: enabled
+  [ProjectPermissionSub.SecretEvents]: enabled,
+  [ProjectPermissionSub.ReferenceSecrets]: enabled // reference secret
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
@@ -2133,6 +2181,11 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           ]
         },
         {
+          // reference secret
+          subject: ProjectPermissionSub.ReferenceSecrets,
+          actions: [ProjectPermissionReferenceSecretActions.ReadValue]
+        },
+        {
           subject: ProjectPermissionSub.DynamicSecrets,
           actions: [ProjectPermissionDynamicSecretActions.ReadRootCredential]
         },
@@ -2183,6 +2236,16 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
             ProjectPermissionSecretActions.Edit,
             ProjectPermissionSecretActions.Create,
             ProjectPermissionSecretActions.Delete
+          ]
+        },
+        {
+          // reference secret
+          subject: ProjectPermissionSub.ReferenceSecrets,
+          actions: [
+            ProjectPermissionReferenceSecretActions.ReadValue,
+            ProjectPermissionReferenceSecretActions.Edit,
+            ProjectPermissionReferenceSecretActions.Create,
+            ProjectPermissionReferenceSecretActions.Delete
           ]
         },
         {

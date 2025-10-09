@@ -58,6 +58,7 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 );
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
+  // get user in project
   server.route({
     method: "GET",
     url: "/:projectId/users",
@@ -136,7 +137,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { users };
     }
   });
-
+  // create new project
   server.route({
     method: "POST",
     url: "/",
@@ -213,7 +214,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { project };
     }
   });
-
+  // list
   server.route({
     method: "GET",
     url: "/",
@@ -259,7 +260,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { projects };
     }
   });
-
+  // detail
   server.route({
     method: "GET",
     url: "/:projectId",
@@ -339,7 +340,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return project;
     }
   });
-
+  // delete
   server.route({
     method: "DELETE",
     url: "/:projectId",
@@ -390,7 +391,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { project };
     }
   });
-
+  // update
   server.route({
     method: "PATCH",
     url: "/:projectId",
@@ -487,7 +488,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
-
+  // audit log
   server.route({
     method: "PUT",
     url: "/:projectId/audit-logs-retention",
@@ -538,7 +539,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
-
+  // itergation
   server.route({
     method: "GET",
     url: "/:projectId/integrations",
@@ -583,7 +584,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { integrations };
     }
   });
-
+  // authorize
   server.route({
     method: "GET",
     url: "/:projectId/authorizations",
@@ -649,7 +650,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { serviceTokenData };
     }
   });
-
+  // ssh
   server.route({
     method: "GET",
     url: "/:projectId/ssh-config",
@@ -696,7 +697,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return sshConfig;
     }
   });
-
+  // ssh config
   server.route({
     method: "PATCH",
     url: "/:projectId/ssh-config",
@@ -750,7 +751,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return sshConfig;
     }
   });
-
+  // work flow intergation
   server.route({
     method: "GET",
     url: "/:projectId/workflow-integration-config/:integration",
@@ -971,7 +972,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return environmentsFolders;
     }
   });
-
+  // search
   server.route({
     method: "POST",
     url: "/search",
@@ -1011,7 +1012,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { projects, totalCount };
     }
   });
-
+  // project access
   server.route({
     method: "POST",
     url: "/:projectId/project-access",
@@ -1137,7 +1138,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { status };
     }
   });
-
+  //cas
   server.route({
     method: "GET",
     url: "/:projectId/cas",
@@ -1179,7 +1180,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { cas };
     }
   });
-
+  // certificates
   server.route({
     method: "GET",
     url: "/:projectId/certificates",
@@ -1221,7 +1222,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { certificates, totalCount };
     }
   });
-
+  // pki
   server.route({
     method: "GET",
     url: "/:projectId/pki-alerts",
@@ -1418,7 +1419,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return { certificateTemplates };
     }
   });
-
+  //ssh-cas
   server.route({
     method: "GET",
     url: "/:projectId/ssh-cas",

@@ -13,5 +13,6 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  // ProjectPermissionReferenceSecretActions // referenc secret
 } from "./types";
