@@ -8,6 +8,7 @@ export enum ProjectPermissionActions {
 }
 // reference secret
 export enum ProjectPermissionReferenceSecretActions {
+  DescribeReferenceSecret = "describeReferenceSecret",
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
@@ -303,7 +304,7 @@ export enum ProjectPermissionSub {
 
 //reference secret
 export type ReferenceSecretSubjectFields = {
-  environment: string;
+  environment?: string;
 };
 
 export type SecretSubjectFields = {

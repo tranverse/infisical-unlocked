@@ -29,6 +29,8 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { subject } from "@casl/ability";
 import { ProjectPermissionSub } from "@app/context";
+import ReferenceSecretNoAccessRow from "./components/ReferenceSecretNoAccessRow";
+
 export const ReferenceSecretPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
@@ -44,26 +46,13 @@ export const ReferenceSecretPage = () => {
     projectId: currentProject.id
   });
   const secretPath = "/";
-
   const handleClickReferenceSecret = (mappingId: string) => {
     navigate({
       to: "/projects/secret-management/$projectId/reference-secrets/detail/$mappingId",
       params: { projectId: currentProject.id, mappingId }
     });
   };
-  const canReadEnv = permission.can(
-    ProjectPermissionSecretActions.ReadValue,
-    subject(ProjectPermissionSub.Secrets, {})
-  );
 
-  const canReadReferenceSecret = permission.can(
-    ProjectPermissionReferenceSecretActions.ReadValue,
-    subject(ProjectPermissionSub.ReferenceSecrets, {})
-  );
-
-  console.log("canReadReferenceSecret", canReadReferenceSecret)
-
-  console.log(canReadEnv);
   const handleSecretWithSameValue = () => {
     navigate({
       to: "/projects/secret-management/$projectId/reference-secrets/secret-value",
@@ -84,12 +73,15 @@ export const ReferenceSecretPage = () => {
         : [...prev, serviceName]
     );
   };
-
-
+  const canReadSecret = permission.can(
+    ProjectPermissionSecretActions.DescribeSecret,
+    subject(ProjectPermissionSub.Secrets, {})
+  );
+  console.log(canReadSecret);
   useEffect(() => {
-    if (!refeneceSecrets) return;
+    if (!refeneceSecrets?.mappingSecrets) return;
 
-    let filtered = [...refeneceSecrets];
+    let filtered = [...refeneceSecrets?.mappingSecrets];
 
     // Search text
     if (searchTerm) {
@@ -103,7 +95,7 @@ export const ReferenceSecretPage = () => {
         const matchesSecretKey = secretItem.secrets?.some((s) =>
           s.secretKey?.toLowerCase().includes(term)
         );
-        if (canReadEnv) {
+        if (canReadSecret) {
           return matchesBasic || matchesSecretKey;
         } else {
           return [];
@@ -131,11 +123,12 @@ export const ReferenceSecretPage = () => {
   // Build service list
   const allServices = Array.from(
     new Set(
-      refeneceSecrets?.flatMap(
+      refeneceSecrets?.mappingSecrets?.flatMap(
         (secret) => secret.services?.map((s) => s.folderName.toLowerCase()) || []
       ) || []
     )
   );
+  const blurClass = "blur-sm opacity-50 cursor-not-allowed";
 
   return (
     <>
@@ -187,26 +180,6 @@ export const ReferenceSecretPage = () => {
                 align="end"
                 sideOffset={2}
               >
-                {/* Environment Filter */}
-                {/* <DropdownMenuLabel>Filter by Environment</DropdownMenuLabel>
-                {userAvailableEnvs.map((availableEnv) => {
-                  const { id: envId, name } = availableEnv;
-                  const isEnvSelected = filteredEnvs.includes(name);
-
-                  return (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleEnvSelect(name);
-                      }}
-                      key={envId}
-                      icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
-                    >
-                      {name}
-                    </DropdownMenuItem>
-                  );
-                })} */}
                 <DropdownMenuLabel>Filter by Environment</DropdownMenuLabel>
                 {userAvailableEnvs.map((availableEnv) => {
                   const { id: envId, name } = availableEnv;
@@ -215,9 +188,9 @@ export const ReferenceSecretPage = () => {
                   return (
                     <DropdownMenuItem
                       key={envId}
-                      disabled={!canReadEnv}
+                      disabled={!canReadSecret}
                       onClick={(e) => {
-                        if (!canReadEnv) return;
+                        if (!canReadSecret) return;
                         e.preventDefault();
                         handleEnvSelect(name);
                       }}
@@ -228,7 +201,6 @@ export const ReferenceSecretPage = () => {
                     </DropdownMenuItem>
                   );
                 })}
-
                 <DropdownMenuLabel>Filter by Service</DropdownMenuLabel>
                 {allServices.map((service) => {
                   const isServiceSelected = filteredServices.includes(service);
@@ -250,21 +222,19 @@ export const ReferenceSecretPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Search Box */}
             <SearchInput
               placeholder="Search by secret key"
               searchValue={searchTerm}
               onChange={(val) => setSearchTerm(val)}
-              secrets={refeneceSecrets}
+              secrets={refeneceSecrets?.mappingSecrets}
               projectId={currentProject?.id}
-              canReadEnv={canReadEnv}
+              canReadSecret={canReadSecret}
             />
           </div>
         </div>
 
-        {/* Table */}
         <div className="mt-4">
-          {filterReferenceSecrets?.length > 0 ? (
+          {refeneceSecrets?.totalMappingSecret > 0 ? (
             <TableContainer>
               <Table>
                 <THead>
@@ -283,8 +253,12 @@ export const ReferenceSecretPage = () => {
                       itemKey={index.toString()}
                       onClick={handleClickReferenceSecret}
                       searchTerm={searchTerm}
+                      blurClass={blurClass}
                     />
                   ))}
+                  {refeneceSecrets?.mappingSecrets.length == 0 && (
+                    <ReferenceSecretNoAccessRow count={refeneceSecrets?.totalMappingSecret} />
+                  )}
                 </TBody>
 
                 <TFoot>

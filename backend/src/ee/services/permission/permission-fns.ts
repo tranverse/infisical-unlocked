@@ -13,7 +13,9 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub,
   ProjectPermissionV2Schema,
-  SecretSubjectFields
+  SecretSubjectFields,
+  ReferenceSecretSubjectFields,
+  ProjectPermissionReferenceSecretActions
 } from "./project-permission";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
@@ -41,6 +43,37 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
       ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
     } else {
       ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
+    }
+  }
+}
+
+export function throwIfMissingReferenceSecretReadValueOrDescribePermission(
+  permission: MongoAbility<ProjectPermissionSet> | PureAbility,
+  subjectFields?: ReferenceSecretSubjectFields
+) {
+  try {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
+        subject(ProjectPermissionSub.ReferenceSecrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
+        ProjectPermissionSub.ReferenceSecrets
+      );
+    }
+  } catch {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionReferenceSecretActions.ReadValue,
+        subject(ProjectPermissionSub.ReferenceSecrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionReferenceSecretActions.ReadValue,
+        ProjectPermissionSub.ReferenceSecrets
+      );
     }
   }
 }

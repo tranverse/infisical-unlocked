@@ -29,10 +29,6 @@ export const secretMappingDALFactory = (db: TDbClient) => {
     };
   };
 
-  // const getAllSecretMapping = async () => {
-  //     const secretMappings = await (db.replicaNode())(TableName.SecretMapping)
-  //     return secretMappings
-  // }
   const getAllSecretMappingInProject = async (projectId: string) => {
     const secretMappings = await db
       .replicaNode()(TableName.SecretMapping)
@@ -106,8 +102,16 @@ export const secretMappingDALFactory = (db: TDbClient) => {
     return await db(TableName.SecretMapping).where(`${TableName.SecretMapping}.value`, value);
   };
 
-  const getSecretsAndMappingSecretInProject = async (mappingId) => {
-    const mappingSecret = await db(TableName.SecretMapping).where(`${TableName.SecretMapping}.id`, mappingId).first();
+  const getSecretsAndMappingSecretInProject = async (mappingId: string) => {
+    const mappingSecret = await db(TableName.SecretMapping)
+      .join(`${TableName.SecretV2}`, `${TableName.SecretMapping}.id`, `${TableName.SecretV2}.mappingId`)
+      .join(`${TableName.SecretFolder}`, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .where(`${TableName.SecretMapping}.id`, mappingId)
+      .select(selectAllTableCols(TableName.SecretMapping))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
+      .first();
 
     const secrets = await db(TableName.SecretV2)
       .where(`${TableName.SecretV2}.mappingId`, mappingId)

@@ -136,7 +136,6 @@ import { Route as sshSshHostGroupDetailsByIDPageRouteImport } from './pages/ssh/
 import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/route'
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
 import { Route as secretManagerSameValueSecretPageRouteImport } from './pages/secret-manager/SameValueSecretPage/route'
-import { Route as secretManagerMappingSecretPageRouteImport } from './pages/secret-manager/MappingSecretPage/route'
 import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
@@ -1352,13 +1351,6 @@ const secretManagerSameValueSecretPageRouteRoute =
     path: '/secret-value',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutReferenceSecretsRoute,
-  } as any)
-
-const secretManagerMappingSecretPageRouteRoute =
-  secretManagerMappingSecretPageRouteImport.update({
-    id: '/mapping-secrets/$mappingId',
-    path: '/mapping-secrets/$mappingId',
-    getParentRoute: () => secretManagerLayoutRoute,
   } as any)
 
 const secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute =
@@ -3036,13 +3028,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId': {
-      id: '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId'
-      path: '/mapping-secrets/$mappingId'
-      fullPath: '/projects/secret-management/$projectId/mapping-secrets/$mappingId'
-      preLoaderRoute: typeof secretManagerMappingSecretPageRouteImport
-      parentRoute: typeof secretManagerLayoutImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/reference-secrets/secret-value': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/reference-secrets/secret-value'
       path: '/secret-value'
@@ -4440,7 +4425,6 @@ interface secretManagerLayoutRouteChildren {
   projectAuditLogsPageRouteSecretManagerRoute: typeof projectAuditLogsPageRouteSecretManagerRoute
   AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutReferenceSecretsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutReferenceSecretsRouteWithChildren
-  secretManagerMappingSecretPageRouteRoute: typeof secretManagerMappingSecretPageRouteRoute
   secretManagerSecretDashboardPageRouteRoute: typeof secretManagerSecretDashboardPageRouteRoute
   projectGroupDetailsByIDPageRouteSecretManagerRoute: typeof projectGroupDetailsByIDPageRouteSecretManagerRoute
   projectIdentityDetailsByIDPageRouteSecretManagerRoute: typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
@@ -4468,8 +4452,6 @@ const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
     AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRouteWithChildren,
   AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutReferenceSecretsRoute:
     AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutReferenceSecretsRouteWithChildren,
-  secretManagerMappingSecretPageRouteRoute:
-    secretManagerMappingSecretPageRouteRoute,
   secretManagerSecretDashboardPageRouteRoute:
     secretManagerSecretDashboardPageRouteRoute,
   projectGroupDetailsByIDPageRouteSecretManagerRoute:
@@ -4954,7 +4936,6 @@ export interface FileRoutesByFullPath {
   '/projects/cert-management/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
-  '/projects/secret-management/$projectId/mapping-secrets/$mappingId': typeof secretManagerMappingSecretPageRouteRoute
   '/projects/secret-management/$projectId/reference-secrets/secret-value': typeof secretManagerSameValueSecretPageRouteRoute
   '/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/projects/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
@@ -5172,7 +5153,6 @@ export interface FileRoutesByTo {
   '/projects/cert-management/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
-  '/projects/secret-management/$projectId/mapping-secrets/$mappingId': typeof secretManagerMappingSecretPageRouteRoute
   '/projects/secret-management/$projectId/reference-secrets/secret-value': typeof secretManagerSameValueSecretPageRouteRoute
   '/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/projects/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
@@ -5413,7 +5393,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId': typeof secretManagerMappingSecretPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/reference-secrets/secret-value': typeof secretManagerSameValueSecretPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ca/$caId': typeof sshSshCaByIDPageRouteRoute
@@ -5647,7 +5626,6 @@ export interface FileRouteTypes {
     | '/projects/cert-management/$projectId/subscribers/$subscriberName'
     | '/projects/secret-management/$projectId/integrations/$integrationId'
     | '/projects/secret-management/$projectId/integrations/select-integration-auth'
-    | '/projects/secret-management/$projectId/mapping-secrets/$mappingId'
     | '/projects/secret-management/$projectId/reference-secrets/secret-value'
     | '/projects/secret-management/$projectId/secrets/$envSlug'
     | '/projects/ssh/$projectId/ca/$caId'
@@ -5864,7 +5842,6 @@ export interface FileRouteTypes {
     | '/projects/cert-management/$projectId/subscribers/$subscriberName'
     | '/projects/secret-management/$projectId/integrations/$integrationId'
     | '/projects/secret-management/$projectId/integrations/select-integration-auth'
-    | '/projects/secret-management/$projectId/mapping-secrets/$mappingId'
     | '/projects/secret-management/$projectId/reference-secrets/secret-value'
     | '/projects/secret-management/$projectId/secrets/$envSlug'
     | '/projects/ssh/$projectId/ca/$caId'
@@ -6103,7 +6080,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers/$subscriberName'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth'
-    | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/reference-secrets/secret-value'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug'
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ca/$caId'
@@ -6728,7 +6704,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/reference-secrets",
-        "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identities/$identityId",
@@ -7066,10 +7041,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth": {
       "filePath": "secret-manager/integrations/SelectIntegrationAuthPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId": {
-      "filePath": "secret-manager/MappingSecretPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/reference-secrets/secret-value": {
       "filePath": "secret-manager/SameValueSecretPage/route.tsx",

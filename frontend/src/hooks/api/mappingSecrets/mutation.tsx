@@ -9,6 +9,7 @@ import { PendingAction } from "../secretFolders/types";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "../secrets/queries";
 import { TUpdateSecretsV3DTO } from "../types";
+import { da } from "date-fns/locale";
 
 export const useUpdateMappingSecret = ({
   options
@@ -19,12 +20,12 @@ export const useUpdateMappingSecret = ({
 
   return useMutation<object, object, TUpdateMappingSecretDTO>({
     mutationFn: async ({
-      environment = "dev",
+      environment,
       value,
       projectId,
       secretPath = "/",
       newValue,
-      secretKey = "",
+      secretKey,
       mappingId,
       secretData
     }) => {
@@ -36,13 +37,12 @@ export const useUpdateMappingSecret = ({
         value,
         secretKey
       });
+      console.log("data", data);
       return data;
     },
 
-    onSuccess: async (
-      _,
-      { environment = "dev", projectId, secretPath = "/", mappingId, secretData }
-    ) => {
+    onSuccess: async (data, { environment, projectId, mappingId, secretData }) => {
+      console.log("data from mutationFn:", data);
       try {
         queryClient.invalidateQueries({
           queryKey: mappingSecretKeys.detail({ projectId, mappingId })
@@ -50,19 +50,11 @@ export const useUpdateMappingSecret = ({
         queryClient.invalidateQueries({
           queryKey: mappingSecretKeys.list({ projectId })
         });
-        queryClient.invalidateQueries({
-          queryKey: mappingSecretKeys.getSecretImportSecrets({
-            projectId,
-            environment,
-            path: secretPath
-          })
-        });
         await invalidateMappingSecrets({
           queryClient,
           projectId,
-          mappingSecretData: secretData
+          mappingSecretData: data
         });
-        console.log("UI refreshed after secret update");
       } catch (err) {
         console.error("Error in onSuccess", err);
       }
@@ -162,6 +154,119 @@ export const useCreateMappingSecret = () => {
   });
 };
 
+// export const invalidateMappingSecrets = ({
+//   queryClient,
+//   projectId,
+//   mappingSecretData
+// }: {
+//   queryClient: ReturnType<typeof useQueryClient>;
+//   projectId: string;
+//   mappingSecretData: { secrets: any[]; updateMappingSecret: any };
+// }) => {
+//   const { secrets, updateMappingSecret } = mappingSecretData;
+//   const uniqueKeys = new Set<string>();
+//   console.log(updateMappingSecret);
+//   for (const sec of secrets) {
+//     const environment = sec.environment;
+//     const secretPath = sec.folderName ? `/${sec.folderName}` : "/";
+//     const secretKey = sec.secretKey || sec.key;
+//     console.log(sec);
+//     const cacheKey = `${projectId}-${environment}-${secretPath}-${secretKey}`;
+//     if (uniqueKeys.has(cacheKey)) continue;
+//     uniqueKeys.add(cacheKey);
+
+//     const queryKey = dashboardKeys.getSecretValue({
+//       projectId,
+//       environment,
+//       secretPath,
+//       secretKey: sec.newSecretName ?? sec.secretKey,
+//       isOverride: false
+//     });
+
+//     console.log("🔍 Setting queryClient data for:", queryKey);
+//     console.log("New secret value:", sec.secretValue);
+
+//     queryClient.setQueryData(queryKey, { value: sec.secretValue });
+//     const currentData = queryClient.getQueryData(queryKey);
+//     console.log("✅ Current queryClient data:", currentData);
+//     console.log("Invalidate secret:", {
+//       projectId,
+//       environment,
+//       secretPath,
+//       secretKey,
+//       queryKey: secretKeys.getProjectSecret({
+//         projectId,
+//         environment,
+//         secretPath
+//       })
+//     });
+//     queryClient.invalidateQueries({
+//       queryKey: dashboardKeys.getSecretValue({
+//         projectId,
+//         environment,
+//         secretPath,
+//         secretKey: sec.newSecretName ?? sec.secretKey,
+//         isOverride: false
+//       }),
+//       exact: true
+//     });
+
+//     queryClient.invalidateQueries({
+//       queryKey: secretKeys.getProjectSecret({
+//         projectId,
+//         environment,
+//         secretPath
+//       }),
+//       exact: false,
+//       refetchActive: true
+//     });
+
+//     queryClient.invalidateQueries({
+//       queryKey: secretKeys.getSecretAccessList({
+//         projectId,
+//         environment,
+//         secretPath,
+//         secretKey
+//       }),
+//       exact: false,
+//       refetchActive: true
+//     });
+
+//     queryClient.invalidateQueries({
+//       queryKey: dashboardKeys.getDashboardSecrets({
+//         projectId,
+//         secretPath
+//       }),
+//       exact: false,
+//       refetchActive: true
+//     });
+//   }
+
+//   // Invalidate mapping secret queries
+//   console.log("♻️ Invalidate mapping secrets:", updateMappingSecret.id);
+
+//   queryClient.invalidateQueries({
+//     queryKey: mappingSecretKeys.all,
+//     exact: false,
+//     refetchActive: true
+//   });
+
+//   queryClient.invalidateQueries({
+//     queryKey: mappingSecretKeys.detail({
+//       projectId,
+//       mappingId: updateMappingSecret.id
+//     }),
+//     exact: false,
+//     refetchActive: true
+//   });
+
+//   queryClient.invalidateQueries({
+//     queryKey: mappingSecretKeys.list({ projectId }),
+//     exact: false,
+//     refetchActive: true
+//   });
+// };
+
 export const invalidateMappingSecrets = ({
   queryClient,
   projectId,
@@ -169,132 +274,54 @@ export const invalidateMappingSecrets = ({
 }: {
   queryClient: ReturnType<typeof useQueryClient>;
   projectId: string;
-  mappingSecretData: { mappingSecret: any; secrets: any[] };
+  mappingSecretData: { secrets: any[]; updateMappingSecret: any };
 }) => {
-  const { secrets, mappingSecret } = mappingSecretData;
+  const { secrets, updateMappingSecret } = mappingSecretData;
   const uniqueKeys = new Set<string>();
-  console.log(mappingSecret);
+
   for (const sec of secrets) {
-    const environment = sec.environment || sec.env;
+    const environment = sec.environment;
     const secretPath = sec.folderName ? `/${sec.folderName}` : "/";
     const secretKey = sec.secretKey || sec.key;
-
     const cacheKey = `${projectId}-${environment}-${secretPath}-${secretKey}`;
     if (uniqueKeys.has(cacheKey)) continue;
     uniqueKeys.add(cacheKey);
 
-    console.log("Invalidate secret:", {
-      projectId,
+    const queryKey = dashboardKeys.getSecretValue({
       environment,
       secretPath,
-      secretKey,
-      queryKey: secretKeys.getProjectSecret({
-        projectId,
-        environment,
-        secretPath
-      })
+      secretKey: sec.secretKey,
+      isOverride: false
     });
 
-    queryClient.invalidateQueries({
-      queryKey: secretKeys.getProjectSecret({
-        projectId,
-        environment,
-        secretPath
-      }),
-      exact: false,
-      refetchActive: true
-    });
+    console.log("🔍 Setting queryClient data for:", queryKey);
+    console.log("New secret value:", sec.secretValue);
 
-    queryClient.invalidateQueries({
-      queryKey: secretKeys.getSecretAccessList({
-        projectId,
-        environment,
-        secretPath,
-        secretKey
-      }),
-      exact: false,
-      refetchActive: true
-    });
+    // Optimistic update: set giá trị mới trước
+    queryClient.setQueryData(queryKey, { value: sec.secretValue });
 
-    queryClient.invalidateQueries({
-      queryKey: dashboardKeys.getDashboardSecrets({
-        projectId,
-        secretPath
-      }),
-      exact: false,
-      refetchActive: true
-    });
-
-    queryClient.invalidateQueries({
-      queryKey: secretSnapshotKeys.list({
-        environment,
-        projectId,
-        directory: secretPath
-      }),
-      exact: false,
-      refetchActive: true
-    });
-
-    queryClient.invalidateQueries({
-      queryKey: secretSnapshotKeys.count({
-        environment,
-        projectId,
-        directory: secretPath
-      }),
-      exact: false,
-      refetchActive: true
-    });
-
-    queryClient.invalidateQueries({
-      queryKey: commitKeys.count({
-        projectId,
-        environment,
-        directory: secretPath
-      }),
-      exact: false,
-      refetchActive: true
-    });
-
-    queryClient.invalidateQueries({
-      queryKey: commitKeys.history({
-        projectId,
-        environment,
-        directory: secretPath
-      }),
-      exact: false,
-      refetchActive: true
-    });
-
-    queryClient.invalidateQueries({
-      queryKey: secretApprovalRequestKeys.count({
-        projectId
-      }),
-      exact: false,
-      refetchActive: true
-    });
+    // Chỉ invalidate những query cần thiết
+    // queryClient.invalidateQueries({
+    //   queryKey: secretKeys.getProjectSecret({
+    //     projectId,
+    //     environment,
+    //     secretPath,
+    //     viewSecretValue: false
+    //   }),
+    //   exact: false
+    // });
+    // queryClient.invalidateQueries({
+    //   queryKey: dashboardKeys.getSecretValuesRoot()
+    // });
+    // queryClient.invalidateQueries(queryKey, { refetchActive: true, refetchInactive: true });
   }
 
-  // Invalidate mapping secret queries
-  console.log(" Invalidate mapping secrets:", mappingSecret.id);
-
-  queryClient.invalidateQueries({
-    queryKey: mappingSecretKeys.all,
-    exact: false,
-    refetchActive: true
-  });
-
+  console.log("♻️ Invalidate mapping secrets:", updateMappingSecret.id);
   queryClient.invalidateQueries({
     queryKey: mappingSecretKeys.detail({
       projectId,
-      mappingId: mappingSecret.id
+      mappingId: updateMappingSecret.id
     }),
-    exact: false,
-    refetchActive: true
-  });
-
-  queryClient.invalidateQueries({
-    queryKey: mappingSecretKeys.list({ projectId }),
-    exact: false,
-    refetchActive: true
+    exact: false
   });
 };

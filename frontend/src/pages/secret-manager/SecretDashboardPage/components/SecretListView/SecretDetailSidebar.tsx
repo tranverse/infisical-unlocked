@@ -298,7 +298,7 @@ export const SecretDetailSidebar = ({
 
     try {
       const data = await fetchSecretValue(fetchSecretValueParams);
-
+      console.log("data", data)
       queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
 
       return data?.valueOverride ?? data.value;

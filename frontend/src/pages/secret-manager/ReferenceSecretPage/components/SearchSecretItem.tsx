@@ -29,7 +29,6 @@ export const SearchSecretItem = ({ secret, onClose, projectId, mappingId }: Prop
     });
     onClose();
   };
-  console.log(secret);
   return (
     <Tr className="cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600" onClick={handleNavigate}>
       <Td className="w-full">

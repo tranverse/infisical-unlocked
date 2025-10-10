@@ -50,7 +50,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
     ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHostGroups,
+    ProjectPermissionSub.SshHostGroups
   ].forEach((el) => {
     can(
       [
@@ -174,6 +174,7 @@ const buildAdminPermissionRules = () => {
   can(
     // reference secrets
     [
+      ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
       ProjectPermissionReferenceSecretActions.ReadValue,
       ProjectPermissionReferenceSecretActions.Create,
       ProjectPermissionReferenceSecretActions.Edit,
@@ -322,6 +323,7 @@ const buildMemberPermissionRules = () => {
   can(
     // reference secret
     [
+      ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
       ProjectPermissionReferenceSecretActions.ReadValue,
       ProjectPermissionReferenceSecretActions.Edit,
       ProjectPermissionReferenceSecretActions.Create,
@@ -551,7 +553,13 @@ const buildViewerPermissionRules = () => {
     ProjectPermissionSub.Secrets
   );
   // reference secret
-  can(ProjectPermissionReferenceSecretActions.ReadValue, ProjectPermissionSub.ReferenceSecrets);
+  can(
+    [
+      ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
+      ProjectPermissionReferenceSecretActions.ReadValue
+    ],
+    ProjectPermissionSub.ReferenceSecrets
+  );
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);

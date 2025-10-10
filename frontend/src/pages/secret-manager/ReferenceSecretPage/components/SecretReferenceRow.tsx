@@ -4,7 +4,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { useProjectPermission } from "@app/context";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionReferenceSecretActions
+} from "@app/context/ProjectPermissionContext/types";
 import { subject } from "@casl/ability";
 
 type Props = {
@@ -12,6 +15,8 @@ type Props = {
   itemKey: string;
   onClick: (id: string) => void;
   searchTerm?: string;
+  canReadReferenceSecret: boolean;
+  blurClass: string;
 };
 
 const colors = [
@@ -24,20 +29,24 @@ const colors = [
   "bg-indigo-400"
 ];
 
-const SecretReferenceRow = ({ referenceSecret, itemKey, onClick, searchTerm = "" }: Props) => {
+const SecretReferenceRow = ({
+  referenceSecret,
+  itemKey,
+  onClick,
+  searchTerm = "",
+  blurClass
+}: Props) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const { permission } = useProjectPermission();
 
-  const canReadEnv = permission.can(
-    ProjectPermissionSecretActions.ReadValue,
-    subject(ProjectPermissionSub.Secrets, { environment: referenceSecret.environment })
-  );
-
+  // const canReadEnv = permission.can(
+  //   ProjectPermissionSecretActions.ReadValue,
+  //   subject(ProjectPermissionSub.Secrets, { environment: referenceSecret.environment })
+  // );
   const canReadKey = permission.can(
     ProjectPermissionSecretActions.ReadValue,
     subject(ProjectPermissionSub.Secrets, { secretName: referenceSecret.key })
   );
-
   const highlightText = (text: string) => {
     if (!searchTerm) return text;
     const regex = new RegExp(`(${searchTerm})`, "gi");
@@ -76,11 +85,10 @@ const SecretReferenceRow = ({ referenceSecret, itemKey, onClick, searchTerm = ""
           <div className="flex items-center space-x-2">
             <FontAwesomeIcon icon={faCopy} className="text-bunker-300" />
 
-            <div className="flex-1">{highlightText(referenceSecret.key)}</div>
+            <div className={`} flex-1`}>{highlightText(referenceSecret.key)}</div>
           </div>
 
           {secretKeys && canReadKey && (
-            // isOpen={isKeyFiltered || showTooltip}
             <Tooltip content={secretKeys}>
               <span
                 className="ml-2 cursor-help text-blue-400"
@@ -101,7 +109,7 @@ const SecretReferenceRow = ({ referenceSecret, itemKey, onClick, searchTerm = ""
             return (
               <span
                 key={index}
-                className={`rounded-full px-3 py-1 text-xs font-medium text-black shadow-sm ${randomColor}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium text-black shadow-sm ${randomColor} `}
               >
                 {highlightText(service.folderName)}
               </span>
@@ -111,13 +119,13 @@ const SecretReferenceRow = ({ referenceSecret, itemKey, onClick, searchTerm = ""
       </Td>
 
       <Td>
-        {!canReadEnv ? (
+        {/* {!canReadEnv ? (
           <Tooltip content="You don't have permission to view environment">
             <span className="cursor-not-allowed blur-sm">*******</span>
           </Tooltip>
-        ) : (
-          highlightText(referenceSecret.environment)
-        )}
+        ) : ( */}
+        {highlightText(referenceSecret?.environment)}
+        {/* )} */}
       </Td>
     </Tr>
   );

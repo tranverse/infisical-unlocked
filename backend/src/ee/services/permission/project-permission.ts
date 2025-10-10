@@ -40,6 +40,7 @@ export enum ProjectPermissionSecretActions {
 }
 // reference secret
 export enum ProjectPermissionReferenceSecretActions {
+  DescribeReferenceSecret = "describeReferenceSecret",
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
@@ -241,7 +242,7 @@ export enum ProjectPermissionSub {
 
 // reference secret
 export type ReferenceSecretSubjectFields = {
-  environment: string;
+  environment?: string;
 };
 
 export type SecretSubjectFields = {
@@ -1046,7 +1047,7 @@ export const buildServiceTokenProjectPermission = (
     [
       ProjectPermissionSub.Secrets,
       ProjectPermissionSub.SecretImports,
-      ProjectPermissionSub.SecretFolders,
+      ProjectPermissionSub.SecretFolders
       // ProjectPermissionSub.ReferenceSecrets
     ].forEach((subject) => {
       if (canWrite) {

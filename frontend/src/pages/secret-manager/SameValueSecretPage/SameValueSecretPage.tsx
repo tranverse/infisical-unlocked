@@ -106,7 +106,7 @@ import {
   useSelectedSecretActions,
   useSelectedSecrets
 } from "../SecretDashboardPage/SecretMainPage.store";
-
+import { ProjectPermissionReferenceSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Filter, RowType } from "../SecretDashboardPage/SecretMainPage.types";
 import { useSecretsAndMappingSecret } from "../../../hooks/utils/secrets-overview";
 import {
@@ -134,7 +134,6 @@ export enum EntryType {
   SECRET = "secret",
   MAPPING = "mapping"
 }
-import { ProjectPermissionSub } from "@app/context";
 
 import { MappingSecretOverviewTableRow } from "./components/MappingSecretOverviewTableRow";
 import {
@@ -158,6 +157,10 @@ const Page = () => {
     permission,
     ProjectPermissionSecretActions.ReadValue
   );
+  const canCreateReferenceSecret = permission.can(
+    ProjectPermissionReferenceSecretActions.Create,
+    subject(ProjectPermissionSub.ReferenceSecrets, {})
+  );
   const getSecretByKey = (env: string, key: string, folderName: string, secrets: []) => {
     const sec = secrets?.find(
       (s) => s.env === env && s.secretKey === key && s.folderName === folderName
@@ -167,7 +170,7 @@ const Page = () => {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const [showSameValue, setShowSameValue] = useState(false);
-  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.MappingSecretPage.path });
+  const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.ReferenceSecretPage.path });
   const reshapedSameValue = useMemo(() => {
     if (!sameValueSecrets?.sameValueSecret || sameValueSecrets?.sameValueSecret.length === 0)
       return [];
@@ -410,15 +413,27 @@ const Page = () => {
                           </Td>
 
                           <Td>
-                            <div
-                              className="flex cursor-pointer items-center justify-center gap-2 rounded border border-blue-800 p-1 shadow"
-                              onClick={() =>
-                                handleCreateReferenceSecret(sec.secrets[0].secretValue, sec.secrets)
-                              }
-                            >
-                              <FontAwesomeIcon icon={faPlus} />
-                              <span>Create secret</span>
-                            </div>
+                            {canCreateReferenceSecret ? (
+                              <div
+                                className="flex cursor-pointer items-center justify-center gap-2 rounded border border-blue-800 p-1 shadow"
+                                onClick={() =>
+                                  handleCreateReferenceSecret(
+                                    sec.secrets[0].secretValue,
+                                    sec.secrets
+                                  )
+                                }
+                              >
+                                <FontAwesomeIcon icon={faPlus} />
+                                <span>Create secret</span>
+                              </div>
+                            ) : (
+                              <Tooltip content="You do not have permission to create this reference secret">
+                                <div className="flex cursor-not-allowed items-center justify-center gap-2 rounded border border-blue-800 p-1 shadow">
+                                  <FontAwesomeIcon icon={faPlus} />
+                                  <span>Create secret</span>
+                                </div>
+                              </Tooltip>
+                            )}
                           </Td>
                         </Tr>
                       )}

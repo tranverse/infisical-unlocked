@@ -474,7 +474,7 @@ export const secretV2BridgeServiceFactory = ({
         }
       });
     }
-    console.log("secretcheck", secret)
+    console.log("secretcheck", secret);
     return reshapeBridgeSecret(
       projectId,
       environment,
@@ -877,10 +877,11 @@ export const secretV2BridgeServiceFactory = ({
           secretToDelete.mappingId,
           secretToDelete.id
         );
+        console.log("getSecretWithSameValue", getSecretWithSameValue);
+
         if (getSecretWithSameValue.length <= 1) {
           const sameValueSecret = getSecretWithSameValue[0];
           await secretMappingDAL.deleteSecretMappingById(secretToDelete.mappingId);
-          const updatedSecret = await secretDAL.updateMappingIdById(sameValueSecret.id, secretToDelete.mappingId);
         }
       }
 
@@ -936,7 +937,6 @@ export const secretV2BridgeServiceFactory = ({
         secretValueHidden
       );
     } catch (err) {
-      // deferred errors aren't return as DatabaseError
       const error = err as { code: string; table: string };
       if (
         error?.code === DatabaseErrorCode.ForeignKeyViolation &&
@@ -1838,9 +1838,62 @@ export const secretV2BridgeServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
+    // find mapping secret has same value
+    const allSecrets = await secretDAL.getAllSecretInProjectAndNotInFolder(projectId, folderId, environment);
+    const allMappingSecrets = await secretMappingDAL.getAllSecretMappingInProjectAndEnvironment(projectId, environment);
+
+    const processedSecrets = [];
+
+    for (const inputSecret of inputSecrets) {
+      let mappingId: string | null = null;
+
+      const sameValueSecrets = [];
+      for (const secret of allSecrets) {
+        const plainText = secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue });
+        if (plainText.toString("utf-8") === inputSecret.secretValue) {
+          sameValueSecrets.push(secret);
+        }
+      }
+
+      if (sameValueSecrets.length > 0) {
+        let mapSecret = null;
+        for (const map of allMappingSecrets) {
+          const decryptedValue = secretManagerDecryptor({ cipherTextBlob: map.value });
+          if (decryptedValue.toString("utf-8") === inputSecret.secretValue) {
+            mapSecret = map;
+            break;
+          }
+        }
+
+        if (mapSecret) {
+          mappingId = mapSecret.id;
+        } else {
+          const encryptedValue = secretManagerEncryptor({
+            plainText: Buffer.from(inputSecret.secretValue)
+          }).cipherTextBlob;
+          const secretMappingKey = await secretMappingDAL.generateSecretMappingKey();
+
+          const newMappingSecret = await secretMappingDAL.createSecretMapping({
+            key: secretMappingKey,
+            value: encryptedValue
+          });
+          mappingId = newMappingSecret.id;
+          allMappingSecrets.push(newMappingSecret);
+        }
+        for (const secret of sameValueSecrets) {
+          await secretDAL.updateMappingIdById(secret.secretId, mappingId);
+        }
+      }
+
+      processedSecrets.push({
+        ...inputSecret,
+        mappingId
+      });
+    }
+
     const executeBulkInsert = async (tx: Knex) => {
       const modifiedSecretsInDB = await fnSecretBulkInsert({
-        inputSecrets: inputSecrets.map((el) => {
+        inputSecrets: processedSecrets.map((el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
 
           return {
@@ -1857,7 +1910,8 @@ export const secretV2BridgeServiceFactory = ({
             tagIds: el.tagIds,
             references,
             secretMetadata: el.secretMetadata,
-            type: SecretType.Shared
+            type: SecretType.Shared,
+            mappingId: el.mappingId || null
           };
         }),
         folderId,
@@ -1882,6 +1936,8 @@ export const secretV2BridgeServiceFactory = ({
     const newSecrets = providedTx
       ? await executeBulkInsert(providedTx)
       : await secretDAL.transaction(executeBulkInsert);
+
+    console.log("newSecrets", newSecrets);
 
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
@@ -1969,19 +2025,8 @@ export const secretV2BridgeServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
-      const updatedSecrets: Array<
-        TSecretsV2 & {
-          secretPath: string;
-          tags: {
-            id: string;
-            slug: string;
-            color?: string | null;
-            name: string;
-          }[];
-        }
-      > = [];
+      const updatedSecrets: any[] = [];
 
       for await (const folder of folders) {
         if (!folder) throw new NotFoundError({ message: "Folder not found" });
@@ -1989,7 +2034,9 @@ export const secretV2BridgeServiceFactory = ({
         const folderId = folder.id;
         const secretPath = folder.path;
         let secretsToUpdate = secretsToUpdateGroupByPath[secretPath];
-        const secretsToUpdateInDB = await secretDAL.find(
+
+        // 1. Lấy toàn bộ secrets hiện tại trong folder để xử lý
+        const secretsInDB = await secretDAL.find(
           {
             folderId,
             $complex: {
@@ -2000,16 +2047,8 @@ export const secretV2BridgeServiceFactory = ({
                   value: secretsToUpdate.map((el) => ({
                     operator: "and",
                     value: [
-                      {
-                        operator: "eq",
-                        field: `${TableName.SecretV2}.key` as "key",
-                        value: el.secretKey
-                      },
-                      {
-                        operator: "eq",
-                        field: "type",
-                        value: SecretType.Shared
-                      }
+                      { operator: "eq", field: `${TableName.SecretV2}.key` as "key", value: el.secretKey },
+                      { operator: "eq", field: "type", value: SecretType.Shared }
                     ]
                   }))
                 }
@@ -2018,233 +2057,99 @@ export const secretV2BridgeServiceFactory = ({
           },
           { tx }
         );
-        if (secretsToUpdateInDB.length !== secretsToUpdate.length && updateMode === SecretUpdateMode.FailOnNotFound)
-          throw new NotFoundError({
-            message: `Secret does not exist: ${diff(
-              secretsToUpdate.map((el) => el.secretKey),
-              secretsToUpdateInDB.map((el) => el.key)
-            ).join(", ")} in path ${folder.path}`
-          });
+        console.log("secretsInDB", secretsInDB)
 
-        const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdateInDB, (i) => i.key);
-        const secretsToCreate = secretsToUpdate.filter((el) => !secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
-        secretsToUpdate = secretsToUpdate.filter((el) => secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
-
-        secretsToUpdateInDB.forEach((el) => {
+        // Map id vào inputSecrets
+        secretsToUpdate = secretsToUpdate.map((input) => {
+          const matched = secretsInDB.find((db) => db.key === input.secretKey);
+          return { ...input, id: matched?.id };
+        });
+        console.log("secretsToUpdate", secretsToUpdate)
+        // 2. Check permission cho tất cả secrets
+        for (const el of secretsInDB) {
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionSecretActions.Edit,
             subject(ProjectPermissionSub.Secrets, {
               environment,
               secretPath,
               secretName: el.key,
-              secretTags: el.tags.map((i) => i.slug)
+              secretTags: el.tags?.map((i) => i.slug) ?? []
             })
           );
-
-          if (el.isRotatedSecret) {
-            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
-
-            if (input && (input.newSecretName || input.secretValue))
-              throw new BadRequestError({ message: `Cannot update rotated secret name or value: ${el.key}` });
-          }
-        });
-
-        // get all tags
-        const sanitizedTagIds = [...new Set(secretsToUpdate.flatMap(({ tagIds = [] }) => tagIds))];
-        const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
-        if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
-        const tagsGroupByID = groupBy(tags, (i) => i.id);
-
-        // check create permission allowed in upsert mode
-        if (updateMode === SecretUpdateMode.Upsert) {
-          secretsToCreate.forEach((el) => {
-            ForbiddenError.from(permission).throwUnlessCan(
-              ProjectPermissionSecretActions.Create,
-              subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName: el.secretKey,
-                secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-              })
-            );
-          });
         }
 
-        // check again to avoid non authorized tags are removed
-        secretsToUpdate.forEach((el) => {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionSecretActions.Edit,
-            subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath,
-              secretName: el.secretKey,
-              secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-            })
-          );
-        });
-
-        // now find any secret that needs to update its name
-        // same process as above
-        const secretsWithNewName = secretsToUpdate.filter(({ newSecretName }) => Boolean(newSecretName));
-        if (secretsWithNewName.length) {
-          const secrets = await secretDAL.find(
-            {
-              folderId,
-              $complex: {
-                operator: "and",
-                value: [
-                  {
-                    operator: "or",
-                    value: secretsWithNewName.map((el) => ({
-                      operator: "and",
-                      value: [
-                        {
-                          operator: "eq",
-                          field: `${TableName.SecretV2}.key` as "key",
-                          value: el.newSecretName as string
-                        },
-                        {
-                          operator: "eq",
-                          field: "type",
-                          value: SecretType.Shared
-                        }
-                      ]
-                    }))
-                  }
-                ]
-              }
-            },
-            { tx }
-          );
-          if (secrets.length)
-            throw new BadRequestError({
-              message: `Secret with new name already exists: ${secretsWithNewName
-                .map((el) => el.newSecretName)
-                .join(", ")}`
-            });
-
-          secretsWithNewName.forEach((el) => {
-            ForbiddenError.from(permission).throwUnlessCan(
-              ProjectPermissionSecretActions.Create,
-              subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName: el.newSecretName as string,
-                secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-              })
-            );
-          });
-        }
-        // now get all secret references made and validate the permission
-        const secretReferencesGroupByInputSecretKey: Record<string, ReturnType<typeof getAllSecretReferences>> = {};
-        const secretReferences: TSecretReference[] = [];
-        secretsToUpdate.concat(SecretUpdateMode.Upsert === updateMode ? secretsToCreate : []).forEach((el) => {
-          if (el.secretValue) {
-            const references = getAllSecretReferences(el.secretValue);
-            secretReferencesGroupByInputSecretKey[el.secretKey] = references;
-            secretReferences.push(...references.nestedReferences);
-            references.localReferences.forEach((localRefKey) => {
-              secretReferences.push({ secretKey: localRefKey, secretPath, environment });
-            });
-          }
-        });
-        await $validateSecretReferences(projectId, permission, secretReferences, tx);
-
-        const project = await projectDAL.findById(projectId);
-        await scanSecretPolicyViolations(
+        // 3. Lấy trước tất cả mapping trong project + environment để tránh query lặp
+        const allMappingSecrets = await secretMappingDAL.getAllSecretMappingInProjectAndEnvironment(
           projectId,
-          secretPath,
-          secretsToUpdate
-            .filter((el) => el.secretValue)
-            .map((el) => ({
-              secretKey: el.newSecretName || el.secretKey,
-              secretValue: el.secretValue as string
-            })),
-          project.secretDetectionIgnoreValues || []
+          environment
         );
+        const getAllSecrets = await secretDAL.getAllSecretInProjectAndNotInFolder(projectId, folderId, environment);
 
+        // 4. Xử lý từng secret
+        for (const inputSecret of secretsInDB) {
+          let newMappingId = null;
+          // remove mapping id if secret has mapping secret
+
+          for (const sc of getAllSecrets) {
+            const decryptedValue = secretManagerDecryptor({ cipherTextBlob: sc.encryptedValue });
+            if (decryptedValue.toString("utf-8") == inputSecret.value) {
+              if (sc.mappingId != null) {
+                newMappingId = sc.mappingId;
+              } else {
+                const newSecretMappingKey = await secretMappingDAL.generateSecretMappingKey();
+                let newMappingSecret = await secretMappingDAL.createSecretMapping({
+                  key: newSecretMappingKey,
+                  value: encryptedValue.encryptedValue
+                });
+                newMappingId = newMappingSecret.id;
+                const up = await secretDAL.updateMappingIdById(sc.secretId, newMappingId);
+              }
+              break;
+            }
+          }
+          const getSecretMapping = await secretDAL.getSecretsByMappingIdAndNotInSecretId(
+            inputSecret.mappingId,
+            inputSecret.id
+          );
+          if (getSecretMapping.length <= 1) {
+            await secretMappingDAL.deleteSecretMappingById(inputSecret.mappingId);
+          }
+        }
+
+        // 5. Bulk update
         const bulkUpdatedSecrets = await fnSecretBulkUpdate({
           folderId,
           orgId: actorOrgId,
-          folderCommitService,
           tx,
           commitChanges,
-          inputSecrets: secretsToUpdate.map((el) => {
-            const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
-            const encryptedValue =
-              typeof el.secretValue !== "undefined"
-                ? {
-                    encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
-                    references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences
-                  }
-                : {};
-
-            return {
-              filter: { id: originalSecret.id, type: SecretType.Shared },
+          inputSecrets: secretsToUpdate
+            .filter((el) => el.id)
+            .map((el) => ({
+              filter: { id: el.id, type: SecretType.Shared },
               data: {
                 encryptedComment: setKnexStringValue(
                   el.secretComment,
                   (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
                 ),
-                skipMultilineEncoding: el.skipMultilineEncoding,
                 key: el.newSecretName || el.secretKey,
                 tags: el.tagIds,
-                secretMetadata: el.secretMetadata,
-                ...encryptedValue
+                ...(el.secretValue && {
+                  encryptedValue: secretManagerEncryptor({
+                    plainText: Buffer.from(el.secretValue)
+                  }).cipherTextBlob
+                }),
+                mappingId: el.mappingId
               }
-            };
-          }),
+            })),
           secretDAL,
           secretVersionDAL,
           secretTagDAL,
           secretVersionTagDAL,
-          actor: {
-            type: actor,
-            actorId
-          },
+          actor: { type: actor, actorId },
           resourceMetadataDAL
         });
 
-        updatedSecrets.push(...bulkUpdatedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
-        if (updateMode === SecretUpdateMode.Upsert) {
-          const bulkInsertedSecrets = await fnSecretBulkInsert({
-            inputSecrets: secretsToCreate.map((el) => {
-              const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-
-              return {
-                version: 1,
-                encryptedComment: setKnexStringValue(
-                  el.secretComment,
-                  (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
-                ),
-                encryptedValue: el.secretValue
-                  ? secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
-                  : undefined,
-                skipMultilineEncoding: el.skipMultilineEncoding,
-                key: el.secretKey,
-                tagIds: el.tagIds,
-                references,
-                secretMetadata: el.secretMetadata,
-                type: SecretType.Shared
-              };
-            }),
-            folderId,
-            orgId: actorOrgId,
-            secretDAL,
-            resourceMetadataDAL,
-            secretVersionDAL,
-            secretTagDAL,
-            secretVersionTagDAL,
-            folderCommitService,
-            actor: {
-              type: actor,
-              actorId
-            },
-            tx
-          });
-
-          updatedSecrets.push(...bulkInsertedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
-        }
+        updatedSecrets.push(...bulkUpdatedSecrets.map((el) => ({ ...el, secretPath })));
       }
 
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
@@ -2255,7 +2160,7 @@ export const secretV2BridgeServiceFactory = ({
       ? await executeBulkUpdate(providedTx)
       : await secretDAL.transaction(executeBulkUpdate);
 
-    await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
+    await Promise.allSettled(folders.map((el) => el?.id && snapshotService.performSnapshot(el.id)));
     await Promise.allSettled(
       folders.map((el) =>
         el
@@ -2377,7 +2282,19 @@ export const secretV2BridgeServiceFactory = ({
         deleteMappingSecretIds.push(deleteSecret.mappingId);
       }
     }
+    for (const sec of secretsToDelete) {
+      for (const mappingId of deleteMappingSecretIds) {
+        const getSecretWithSameValue = await secretDAL.getSecretsByMappingIdAndNotInSecretId(mappingId, sec.id);
+        console.log("getSecretWithSameValue", getSecretWithSameValue);
 
+        if (getSecretWithSameValue.length <= 1) {
+          const sameValueSecret = getSecretWithSameValue[0];
+          await secretMappingDAL.deleteSecretMappingById(mappingId);
+        }
+      }
+    }
+
+    // check permission for each secret
     secretsToDelete.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
@@ -2390,6 +2307,32 @@ export const secretV2BridgeServiceFactory = ({
       );
     });
 
+    // const executeBulkDelete = async (tx: Knex) => {
+    //   const modifiedSecretsInDB = await fnSecretBulkDelete({
+    //     secretDAL,
+    //     secretQueueService,
+    //     folderCommitService,
+    //     secretVersionDAL,
+    //     inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
+    //       secretKey,
+    //       type: type || SecretType.Shared
+    //     })),
+    //     projectId,
+    //     folderId,
+    //     actorId,
+    //     actorType: actor,
+    //     commitChanges,
+    //     tx
+    //   });
+    //   for (const mappingId of deleteMappingSecretIds) {
+    //     const secretsWithSameMapping = await secretDAL.getSecretsByMappingId(mappingId, tx);
+    //     if (secretsWithSameMapping.length <= 1) {
+    //       await secretMappingDAL.deleteSecretMappingById(mappingId, tx);
+    //     }
+    //   }
+    //   await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
+    //   return modifiedSecretsInDB;
+    // };
     const executeBulkDelete = async (tx: Knex) => {
       const modifiedSecretsInDB = await fnSecretBulkDelete({
         secretDAL,
@@ -2411,7 +2354,6 @@ export const secretV2BridgeServiceFactory = ({
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     };
-
 
     try {
       const secretsDeleted = providedTx
@@ -2435,18 +2377,12 @@ export const secretV2BridgeServiceFactory = ({
           }))
         }
       });
-      // delete mapping secret if secret reference less than 1
-      for (const mappingId of deleteMappingSecretIds) {
-        const secretRemain = await secretDAL.getSecretsByMappingId(mappingId);
-        if (secretRemain.length <= 1) {
-          await secretMappingDAL.deleteSecretMappingById(mappingId);
-        }
-      }
-      // check secret has mapping id
+
       const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
+
       return secretsDeleted.map((el) => {
         const secretToDeleteMatch = secretsToDelete.find(
           (i) => i.key === el.key && (i.type || SecretType.Shared) === el.type

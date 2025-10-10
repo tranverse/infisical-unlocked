@@ -44,8 +44,7 @@ import {
   useGetSecretApprovalPolicyOfABoard,
   useGetWorkspaceSnapshotList,
   useGetWsSnapshotCount,
-  useGetWsTags,
-  
+  useGetWsTags
 } from "@app/hooks/api";
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";

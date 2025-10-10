@@ -1007,6 +1007,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       .join(`${TableName.Environment}`, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .select(selectAllTableCols(TableName.SecretV2))
       .select(db.ref("slug").withSchema(TableName.Environment).as("env"))
+      .select(db.ref("name").withSchema(TableName.Environment).as("environment"))
       .select(db.ref("name").withSchema(TableName.SecretFolder).as("folderName"));
     return secrets;
   };

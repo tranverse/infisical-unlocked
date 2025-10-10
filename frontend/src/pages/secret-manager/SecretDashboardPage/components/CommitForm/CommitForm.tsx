@@ -299,7 +299,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   const handleCommit = async () => {
     if (!commitMessage.trim()) {
       return;
-    }
+    } 
+    console.log("pendingChanges", pendingChanges)
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
       projectId,

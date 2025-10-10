@@ -68,6 +68,7 @@ const SecretPolicyActionSchema = z.object({
 });
 //reference secret
 const ReferenceSecretPolicyActionSchema = z.object({
+  [ProjectPermissionReferenceSecretActions.DescribeReferenceSecret]: z.boolean().optional(),
   [ProjectPermissionReferenceSecretActions.ReadValue]: z.boolean().optional(),
   [ProjectPermissionReferenceSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionReferenceSecretActions.Delete]: z.boolean().optional(),
@@ -718,15 +719,16 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         }
         // reference secret
         if (subject === ProjectPermissionSub.ReferenceSecrets) {
-          // if (!formVal[subject]) formVal[subject] = []; // thêm dòng này ✅
-
           const canReadValue = action.includes(ProjectPermissionReferenceSecretActions.ReadValue);
-          console.log("canReadValue", canReadValue);
+          const canDescribe = action.includes(
+            ProjectPermissionReferenceSecretActions.DescribeReferenceSecret
+          );
           const canEdit = action.includes(ProjectPermissionReferenceSecretActions.Edit);
           const canDelete = action.includes(ProjectPermissionReferenceSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionReferenceSecretActions.Create);
 
           formVal[subject]!.push({
+            describeReferenceSecret: canDescribe,
             readValue: canReadValue,
             create: canCreate,
             edit: canEdit,
@@ -1296,6 +1298,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.ReferenceSecrets]: {
     title: "Reference Secrets",
     actions: [
+      {
+        label: "Describe Reference Secret",
+        value: ProjectPermissionReferenceSecretActions.DescribeReferenceSecret
+      },
       { label: "Read Value", value: ProjectPermissionReferenceSecretActions.ReadValue },
       { label: "Modify", value: ProjectPermissionReferenceSecretActions.Edit },
       { label: "Remove", value: ProjectPermissionReferenceSecretActions.Delete },
@@ -2183,7 +2189,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           // reference secret
           subject: ProjectPermissionSub.ReferenceSecrets,
-          actions: [ProjectPermissionReferenceSecretActions.ReadValue]
+          actions: [
+            ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
+            ProjectPermissionReferenceSecretActions.ReadValue
+          ]
         },
         {
           subject: ProjectPermissionSub.DynamicSecrets,
@@ -2242,6 +2251,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           // reference secret
           subject: ProjectPermissionSub.ReferenceSecrets,
           actions: [
+            ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
             ProjectPermissionReferenceSecretActions.ReadValue,
             ProjectPermissionReferenceSecretActions.Edit,
             ProjectPermissionReferenceSecretActions.Create,

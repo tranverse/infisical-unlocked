@@ -1892,7 +1892,7 @@ export const secretServiceFactory = ({
         });
       }
     }
-
+    console.log("secretNamesecretName", secretName)
     const policy =
       actor === ActorType.USER && type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)

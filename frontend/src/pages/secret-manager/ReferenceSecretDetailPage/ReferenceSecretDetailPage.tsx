@@ -16,11 +16,14 @@ import { FolderBreadCrumbs } from "../ReferenceSecretPage/components/FolderBread
 import { useGetSecretAndMappingSecrets } from "@app/hooks/api";
 import { useProject } from "@app/context";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams, Link } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 import { useToggle } from "@app/hooks";
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionReferenceSecretActions
+} from "@app/context/ProjectPermissionContext/types";
 import { subject } from "@casl/ability";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import {
@@ -29,46 +32,62 @@ import {
 } from "../../../hooks/api/mappingSecrets/mutation";
 import { ROUTE_PATHS } from "../../../const/routes";
 import { hasSecretReadValueOrDescribePermission } from "../../../lib/fn/permission";
-import {
-  faArrowDown,
-  faArrowUp,
-  faInfoCircle,
-  faBan,
-  faCheck,
-  faTrash,   
-  faLock,
-  faUpRightFromSquare
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faBan, faTrash, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import SecretNoAccessRow from "./components/SecretNoAccessRow";
 const ReferenceSecretDetailPage = () => {
   const { currentProject } = useProject();
   const params = useParams({ strict: false });
+  const search = useSearch({ strict: false });
   const { permission } = useProjectPermission();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-
   const { data: detailSecret } = useGetSecretAndMappingSecrets({
     projectId: params?.projectId,
     mappingId: params?.mappingId
   });
-
-  console.log(detailSecret);
-
   const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.ReferenceSecretDetailPage.path });
-  const [editedValue, setEditedValue] = useState(detailSecret?.mappingSecret?.value || "");
-
+  const [editedValue, setEditedValue] = useState("");
   const [secretPath, setSecretPath] = useState("");
+
+  const [canUpdateSecrets, setCanUpdateSecrets] = useState(false);
+
+  const blurClass = "blur-sm opacity-50 cursor-not-allowed text-center";
+
+  const canReadReferenceSecret = permission.can(
+    ProjectPermissionReferenceSecretActions.ReadValue,
+    subject(ProjectPermissionSub.ReferenceSecrets, {})
+  );
+
+  const canReadSecret = permission.can(
+    ProjectPermissionSecretActions.DescribeSecret,
+    subject(ProjectPermissionSub.Secrets, {})
+  );
+
+  const canReadValueSecret = permission.can(
+    ProjectPermissionSecretActions.ReadValue,
+    subject(ProjectPermissionSub.Secrets, {})
+  );
+  const canDecribeReferenceSecret = permission.can(
+    ProjectPermissionReferenceSecretActions.DescribeReferenceSecret,
+    subject(ProjectPermissionSub.ReferenceSecrets, {})
+  );
+
+  const canEditReferenceSecret = detailSecret?.secrets?.some((secret) =>
+    permission.can(
+      ProjectPermissionReferenceSecretActions.Edit,
+      subject(ProjectPermissionSub.ReferenceSecrets, { environment: secret.environment })
+    )
+  );
+
+  const canDeleteReferenceSecret = permission.can(
+    ProjectPermissionReferenceSecretActions.Delete,
+    subject(ProjectPermissionSub.ReferenceSecrets, {})
+  );
 
   useEffect(() => {
     if (detailSecret?.mappingSecret?.key) {
-      setSecretPath(detailSecret?.mappingSecret?.key);
+      setSecretPath(detailSecret.mappingSecret.key);
     }
   }, [detailSecret]);
-
-  const [isUpdate, setIsUpdate] = useState(false);
-
-  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
-    permission,
-    ProjectPermissionSecretActions.ReadValue
-  );
 
   useEffect(() => {
     if (!detailSecret?.secrets) return;
@@ -77,15 +96,15 @@ const ReferenceSecretDetailPage = () => {
       permission.can(
         ProjectPermissionSecretActions.Edit,
         subject(ProjectPermissionSub.Secrets, {
-          environment: secret?.env || "",
-          secretPath: secret?.path || "",
-          secretName: secret?.key || "",
+          environment: secret.env || "",
+          secretPath: secret.path || "",
+          secretName: secret.key || "",
           secretTags: ["*"]
         })
       )
     );
 
-    setIsUpdate(hasEditableSecret);
+    setCanUpdateSecrets(hasEditableSecret);
   }, [detailSecret?.secrets]);
 
   const toggleModal = useCallback(() => {
@@ -93,21 +112,28 @@ const ReferenceSecretDetailPage = () => {
   }, []);
 
   useEffect(() => {
-    setEditedValue(detailSecret?.mappingSecret?.value || "");
+    if (detailSecret?.mappingSecret?.value) {
+      setEditedValue(detailSecret.mappingSecret.value);
+    }
   }, [detailSecret]);
 
   const updateMappingSecret = useUpdateMappingSecret();
 
-  const handleSave = async (mappingKey: string, oldValue: string, mappingId: string) => {
+  const handleSave = async (
+    mappingKey: string,
+    oldValue: string,
+    mappingId: string,
+    environment: string
+  ) => {
     try {
       updateMappingSecret.mutate({
         secretKey: mappingKey,
-        environment: "env",
+        environment: environment,
         value: oldValue,
         projectId: currentProject.id,
         secretPath: "/",
         newValue: editedValue,
-        mappingId: mappingId,
+        mappingId,
         secretData: {
           mappingSecret: detailSecret?.mappingSecret,
           secrets: detailSecret?.secrets
@@ -120,7 +146,7 @@ const ReferenceSecretDetailPage = () => {
       });
     } catch (error) {
       createNotification({
-        text: `Fail to updated reference secret values ${error}`,
+        text: `Fail to update reference secret values: ${error}`,
         type: "error"
       });
     }
@@ -152,9 +178,8 @@ const ReferenceSecretDetailPage = () => {
   };
 
   const handleChangeRoute = (env: string, secretPath: string) => {
-    console.log(secretPath);
     navigate({
-      to: "/projects/secret-management/$projectId/overview",
+      to: "/projects/secret-management/$projectId/secrets/$envSlug",
       params: {
         projectId: currentProject.id,
         envSlug: env
@@ -164,8 +189,8 @@ const ReferenceSecretDetailPage = () => {
       }
     });
   };
-
-  const blurClass = "blur-sm opacity-50 cursor-not-allowed";
+  console.log("canReadReferenceSecret", canReadReferenceSecret);
+  console.log("canReadSecret", canReadSecret);
 
   return (
     <div>
@@ -179,8 +204,8 @@ const ReferenceSecretDetailPage = () => {
         <FolderBreadCrumbs secretPath={secretPath} />
       </div>
 
+      {/* Mapping Secret */}
       <div className="mt-4">
-        {/* Table Mapping Secret */}
         <TableContainer className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none border border-gray-700">
           <Table className="w-full table-auto border-collapse">
             <THead className="sticky top-0 z-20 bg-gray-900 text-center">
@@ -200,10 +225,14 @@ const ReferenceSecretDetailPage = () => {
               {detailSecret?.mappingSecret && (
                 <Tr className="text-center hover:bg-gray-800">
                   <Td>
-                    <div className="text-center">{detailSecret?.mappingSecret.key || "—"}</div>
+                    <div
+                      className={`text-center ${canReadReferenceSecret || canDecribeReferenceSecret ? "" : blurClass}`}
+                    >
+                      {detailSecret.mappingSecret.key || "—"}
+                    </div>
                   </Td>
                   <Td className="relative">
-                    {canReadSecretValue ? (
+                    {canReadReferenceSecret && canReadValueSecret ? (
                       <input
                         type="password"
                         value={editedValue}
@@ -213,31 +242,28 @@ const ReferenceSecretDetailPage = () => {
                         onBlur={(e) => (e.currentTarget.type = "password")}
                       />
                     ) : (
-                      <div className="flex items-center">
-                        <span className="italic text-gray-400">••••••••</span>
+                      <div className="flex items-center justify-center">
                         <Tooltip content="You don't have permission to view this value">
-                          <span className="ml-2 flex cursor-help items-center text-gray-400">
-                            <FontAwesomeIcon icon={faUpRightFromSquare} />
-                          </span>
+                          <span className="italic text-gray-400">••••••••</span>
                         </Tooltip>
                       </div>
                     )}
                   </Td>
 
-                  <Td className={!canReadSecretValue ? blurClass : "text-center"}>
-                    {!canReadSecretValue ? (
+                  <Td className={!canDecribeReferenceSecret ? blurClass : "text-center"}>
+                    {!canDecribeReferenceSecret ? (
                       <Tooltip content="You don't have permission to view environment">
-                        <span>{detailSecret?.secrets[0]?.environment || "—"}</span>
+                        <span>{detailSecret?.mappingSecret?.environment || "—"}</span>
                       </Tooltip>
                     ) : (
-                      detailSecret?.secrets[0]?.environment
+                      detailSecret?.mappingSecret?.environment
                     )}
                   </Td>
 
                   <Td>
                     <div className="flex h-full items-center justify-center gap-4 p-2 text-center text-sm">
                       {editedValue !== detailSecret?.mappingSecret?.value &&
-                        (isUpdate ? (
+                        (canEditReferenceSecret && canUpdateSecrets ? (
                           <FontAwesomeIcon
                             icon={faCheck}
                             className="cursor-pointer text-white"
@@ -245,19 +271,20 @@ const ReferenceSecretDetailPage = () => {
                               handleSave(
                                 detailSecret?.mappingSecret.key,
                                 detailSecret?.mappingSecret.value,
-                                detailSecret?.mappingSecret.id
+                                detailSecret?.mappingSecret.id,
+                                detailSecret?.secrets[0].environment
                               )
                             }
                           />
                         ) : (
                           <Tooltip content="You don't have permission to update this secret">
                             <FontAwesomeIcon
-                              icon={faBan}
+                              icon={faCheck}
                               className="cursor-not-allowed text-gray-400"
                             />
                           </Tooltip>
                         ))}
-                      {isUpdate ? (
+                      {canDeleteReferenceSecret ? (
                         <FontAwesomeIcon
                           icon={faTrash}
                           className="cursor-pointer text-white"
@@ -280,7 +307,7 @@ const ReferenceSecretDetailPage = () => {
         </TableContainer>
       </div>
 
-      {/* Table Secrets */}
+      {/* Secrets Table */}
       <div className="mt-4">
         <TableContainer className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none border border-gray-700">
           <Table className="w-full table-auto border-collapse">
@@ -292,41 +319,45 @@ const ReferenceSecretDetailPage = () => {
               </Tr>
             </THead>
             <TBody>
-              {detailSecret?.secrets.map((sec, index) => (
-                <Tr
-                  key={index}
-                  onClick={() => handleChangeRoute(sec.env, sec.folderName)}
-                  className="cursor-pointer"
-                >
-                  <Td className={!canReadSecretValue ? blurClass : ""}>
-                    {!canReadSecretValue ? (
-                      <Tooltip content="You don't have permission to read this secret">
-                        <span>{sec.secretKey}</span>
-                      </Tooltip>
-                    ) : (
-                      sec.secretKey
-                    )}
-                  </Td>
-                  <Td className={!canReadSecretValue ? blurClass : ""}>
-                    {!canReadSecretValue ? (
-                      <Tooltip content="You don't have permission to view service">
-                        <span>{sec.folderName}</span>
-                      </Tooltip>
-                    ) : (
-                      sec.folderName
-                    )}
-                  </Td>
-                  <Td className={!canReadSecretValue ? blurClass : ""}>
-                    {!canReadSecretValue ? (
-                      <Tooltip content="You don't have permission to view environment">
-                        <span>{sec.environment}</span>
-                      </Tooltip>
-                    ) : (
-                      sec.environment
-                    )}
-                  </Td>
-                </Tr>
-              ))}
+              {detailSecret?.secretCount > 0 &&
+                detailSecret?.secrets.map((sec, index) => (
+                  <Tr
+                    key={index}
+                    onClick={() => handleChangeRoute(sec.env, sec.folderName)}
+                    className="cursor-pointer"
+                  >
+                    <Td className={!canReadSecret ? blurClass : ""}>
+                      {!canReadSecret ? (
+                        <Tooltip content="You don't have permission to read this secret">
+                          <span>{sec.secretKey}</span>
+                        </Tooltip>
+                      ) : (
+                        sec.secretKey
+                      )}
+                    </Td>
+                    <Td className={!canReadSecret ? blurClass : ""}>
+                      {!canReadSecret ? (
+                        <Tooltip content="You don't have permission to view service">
+                          <span>{sec.folderName}</span>
+                        </Tooltip>
+                      ) : (
+                        sec.folderName
+                      )}
+                    </Td>
+                    <Td className={!canReadSecret ? blurClass : ""}>
+                      {!canReadSecret ? (
+                        <Tooltip content="You don't have permission to view environment">
+                          <span>{sec.environment}</span>
+                        </Tooltip>
+                      ) : (
+                        sec.environment
+                      )}
+                    </Td>
+                  </Tr>
+                ))}
+              {detailSecret?.secretCount > 0 && detailSecret?.secrets == 0 && (
+                <SecretNoAccessRow count={detailSecret?.secretCount} blurClass={blurClass} />
+              )}
             </TBody>
           </Table>
         </TableContainer>

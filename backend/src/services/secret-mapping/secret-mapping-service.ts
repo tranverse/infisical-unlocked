@@ -1,5 +1,6 @@
 import TSecretMappingDALFactory from "./secret-mapping-dal";
 import TSecretV2BridgeDALFactory from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import {
   TUpdateMappingSecretDTO,
   TGetMappingSecretDTO,
@@ -13,20 +14,38 @@ import { reshapeBridgeSecret } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
+import { throwIfMissingReferenceSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+
+import {
+  ProjectPermissionActions,
+  ProjectPermissionCommitsActions,
+  ProjectPermissionReferenceSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  ProjectPermissionSecretActions
+} from "@app/ee/services/permission/project-permission";
 type TSecretMappingServiceFactoryDep = {
   secretMappingDAL: TSecretMappingDALFactory;
   secretDAL: TSecretV2BridgeDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey" | "decryptWithRootKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  folderDAL: TSecretFolderDALFactory;
+  projectEnvDAL: TProjectEnvDALFactory;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
 };
-
+import { recursivelyGetSecretPaths, reshapeBridgeSecret } from "../secret-v2-bridge/secret-v2-bridge-fns";
 export type TSecretMappingServiceFactory = ReturnType<typeof secretMappingServiceFactory>;
 
 export const secretMappingServiceFactory = ({
   secretMappingDAL,
   secretDAL,
   kmsService,
-  permissionService
+  permissionService,
+  folderDAL,
+  projectEnvDAL
 }: TSecretMappingServiceFactoryDep) => {
   const getMappingSecretsInProject = async ({
     actor,
@@ -43,7 +62,7 @@ export const secretMappingServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
+    throwIfMissingReferenceSecretReadValueOrDescribePermission(permission);
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
@@ -53,12 +72,14 @@ export const secretMappingServiceFactory = ({
     const updated = [];
     for (const sec of mappingSecret) {
       let service = await secretMappingDAL.getServicesOfMappingSecret(sec.id);
+
       let env = service[0].environment;
       let slug = service[0].slug;
 
       const secrets = await secretDAL.getSecretsByMappingId(sec.id);
+
       const returnSecrets = secrets.map((secret) => {
-        return reshapeBridgeSecret(projectId, secret.env, secret.folderName, {
+        return reshapeBridgeSecret(projectId, secret.environment, secret.folderName, {
           ...secret,
           value: secret.encryptedValue
             ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
@@ -72,6 +93,7 @@ export const secretMappingServiceFactory = ({
           secretPath: `/${secret.folderName}`
         });
       });
+
       updated.push({
         ...sec,
         services: service,
@@ -82,7 +104,6 @@ export const secretMappingServiceFactory = ({
     }
 
     mappingSecret = updated;
-
     const returnSecret = mappingSecret.map((secret) => {
       return {
         ...secret,
@@ -92,6 +113,19 @@ export const secretMappingServiceFactory = ({
 
     return returnSecret;
   };
+  // count mapping secret in project
+  const countMappingSecretsInProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TGetMappingSecretDTO) => {
+    let mappingSecret = await secretMappingDAL.getAllSecretMappingInProject(projectId);
+    console.log("mapping", mappingSecret.length);
+    return mappingSecret.length;
+  };
+
   const getSecretsAndMappingSecretInProject = async ({
     actor,
     actorId,
@@ -99,7 +133,6 @@ export const secretMappingServiceFactory = ({
     actorAuthMethod,
     projectId,
     mappingId,
-    environment = "env",
     secretPath = "/"
   }: TGetSecretsAndMappingSecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -110,36 +143,69 @@ export const secretMappingServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     const { mappingSecret, secrets } = await secretMappingDAL.getSecretsAndMappingSecretInProject(mappingId);
 
-    const returnMappingSecret = {
-      ...mappingSecret,
-      value: mappingSecret.value ? secretManagerDecryptor({ cipherTextBlob: mappingSecret.value }).toString() : ""
-    };
+    const canReadSecrets = permission.can(
+      ProjectPermissionSecretActions.DescribeSecret,
+      subject(ProjectPermissionSub.Secrets, {})
+    );
 
-    const returnSecrets = secrets.map((secret) => {
-      return reshapeBridgeSecret(projectId, secret.environment, secretPath, {
-        ...secret,
-        value: secret.encryptedValue
-          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-          : "",
-        comment: secret.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-          : "",
-        folderName: secret.folderName,
-        env: secret.env,
-        secretKey: secret.secretKey,
-        secretPath: secretPath
-      });
-    });
+    if (!canReadSecrets) {
+      return {
+        returnMappingSecret: mappingSecret
+          ? {
+              ...mappingSecret,
+              value: mappingSecret.value
+                ? secretManagerDecryptor({ cipherTextBlob: mappingSecret.value }).toString()
+                : ""
+            }
+          : null,
+        returnSecrets: [],
+        secretCount: secrets.length
+      };
+    }
+
+    const returnMappingSecret = mappingSecret
+      ? {
+          ...mappingSecret,
+          value: mappingSecret.value
+            ? secretManagerDecryptor({
+                cipherTextBlob: mappingSecret.value
+              }).toString()
+            : ""
+        }
+      : null;
+
+    const returnSecrets = await Promise.all(
+      secrets.map(async (secret) => {
+        return reshapeBridgeSecret(projectId, secret.environment, secret?.folderName, {
+          ...secret,
+          value: secret.encryptedValue
+            ? secretManagerDecryptor({
+                cipherTextBlob: secret.encryptedValue
+              }).toString()
+            : "",
+          comment: secret.encryptedComment
+            ? secretManagerDecryptor({
+                cipherTextBlob: secret.encryptedComment
+              }).toString()
+            : "",
+          folderName: secret.folderName,
+          env: secret.env,
+          secretKey: secret.secretKey
+        });
+      })
+    );
 
     return {
       returnMappingSecret,
-      returnSecrets
+      returnSecrets,
+      secretCount: secrets.length
     };
   };
 
@@ -178,8 +244,12 @@ export const secretMappingServiceFactory = ({
     for (const secretId of secrets) {
       const update = await secretDAL.updateMappingIdById(secretId, mappingId);
     }
+    newMappingSecret = {
+      ...newMappingSecret,
+      value: newMappingSecret.value ? secretManagerDecryptor({ cipherTextBlob: newMappingSecret.value }).toString() : ""
+    };
 
-    return { enenvironment, mappingId, key: secretMappingKey };
+    return { environment, mappingId, key: secretMappingKey, newMappingSecret };
   };
   const updateValueMappingSecret = async ({
     actor,
@@ -289,6 +359,7 @@ export const secretMappingServiceFactory = ({
     getMappingSecretsInProject,
     deleteMappingSecretsInProject,
     getSecretsAndMappingSecretInProject,
-    createMappingSecretInProject
+    createMappingSecretInProject,
+    countMappingSecretsInProject
   };
 };

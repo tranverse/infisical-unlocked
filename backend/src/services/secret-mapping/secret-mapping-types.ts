@@ -26,7 +26,6 @@ export type TDeleteMappingSecretDTO = TProjectPermission & {
 export type TGetSecretsAndMappingSecretDTO = TProjectPermission & {
   mappingId: string;
   projectId: string;
-  environment: string;
 };
 
 export type TCreateMappingSecretDTO = TProjectPermission & {

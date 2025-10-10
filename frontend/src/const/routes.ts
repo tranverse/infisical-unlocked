@@ -77,11 +77,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/projects/secret-management/$projectId/secrets/$envSlug",
       "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"
     ),
-    // secret mapping
-    MappingSecretPage: setRoute(
-      "/projects/secret-management/$projectId/mapping-secrets/$mappingId",
-      "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/mapping-secrets/$mappingId"
-    ),
     // reference secret
     ReferenceSecretPage: setRoute(
       "/projects/secret-management/$projectId/reference-secrets",

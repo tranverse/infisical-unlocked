@@ -331,6 +331,9 @@ export const OverviewPage = () => {
     importedByEnvs,
     usedBySecretSyncs
   } = overview ?? {};
+
+
+
   const secretImportsShaped = secretImports
     ?.flatMap(({ data }) => data)
     .filter(Boolean)
@@ -366,7 +369,6 @@ export const OverviewPage = () => {
     getSecretRotationStatusesByName
   } = useSecretRotationOverview(secretRotations);
   const { secKeys, getEnvSecretKeyCount } = useSecretOverview(secrets || []);
-  console.log(secKeys);
   const getSecretByKey = useCallback(
     (env: string, key: string) => {
       const sec = secrets?.find((s) => s.env === env && s.key === key);
@@ -378,7 +380,6 @@ export const OverviewPage = () => {
   const { data: tags } = useGetWsTags(
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
-  console.log("tags", tags);
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
@@ -648,7 +649,6 @@ export const OverviewPage = () => {
       setDebouncedSearchFilter("");
     });
   };
-
 
   const handleExploreEnvClick = async (slug: string) => {
     if (secretPath !== "/") {

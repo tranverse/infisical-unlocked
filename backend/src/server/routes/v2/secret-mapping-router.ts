@@ -9,6 +9,7 @@ import { SanitizedTagSchema, mappingSecretSchema, secretRawSchema } from "../san
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { ForbiddenError } from "@casl/ability";
 
 export const registerSecretMappingRouter = async (server: FastifyZodProvider) => {
   // update secret mapping
@@ -49,8 +50,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
             secretRawSchema.extend({
               folderName: z.string().trim()
             })
-          ),
-          secrets: z.array(secretRawSchema)
+          )
         })
       }
     },
@@ -102,30 +102,48 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          mappingSecrets: z.array(mappingSecretSchema)
+          mappingSecrets: z.array(mappingSecretSchema),
+          totalMappingSecret: z.number()
         })
       }
     },
     handler: async (req) => {
-      const secrets = await server.services.secretMapping.getMappingSecretsInProject({
+      let mappingSecrets;
+      try {
+        mappingSecrets = await server.services.secretMapping.getMappingSecretsInProject({
+          projectId: req.params.projectId,
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        });
+      } catch (error) {
+        if (error instanceof ForbiddenError) {
+          mappingSecrets = [];
+        }
+      }
+
+      const totalMappingSecret = await server.services.secretMapping.countMappingSecretsInProject({
         projectId: req.params.projectId,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+
       await server.services.auditLog.createAuditLog({
         projectId: req.params.projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.GET_MAPPING_SECRETS,
           metadata: {
-            numberOfReferenceSecrets: secrets.length
+            numberOfReferenceSecrets: totalMappingSecret
           }
         }
       });
       return {
-        mappingSecrets: secrets
+        mappingSecrets: mappingSecrets,
+        totalMappingSecret: totalMappingSecret
       };
     }
   });
@@ -189,12 +207,10 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       }),
       querystring: z.object({
         projectId: z.string().trim()
-        // environment: z.string().trim() // thêm environment
       }),
       response: {
         200: z.object({
           mappingSecrets: mappingSecretSchema.omit({
-            environment: z.string(),
             services: z.array(
               z.object({
                 slug: z.string(),
@@ -210,7 +226,8 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
               env: z.string().trim(),
               key: z.string().trim()
             })
-          )
+          ),
+          secretCount: z.number()
         })
       }
     },
@@ -223,7 +240,6 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         mappingId: req.params.mappingId
-        // environment: req.params.environment
       });
 
       await server.services.auditLog.createAuditLog({
@@ -232,7 +248,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
         event: {
           type: EventType.GET_MAPPING_SECRET,
           metadata: {
-            environment: secrets.returnSecrets[0].environment,
+            environment: secrets.returnMappingSecret.env,
             referenceId: secrets.returnMappingSecret.id,
             referenceKey: secrets.returnMappingSecret.key
           }
@@ -241,7 +257,8 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
 
       return {
         mappingSecrets: secrets.returnMappingSecret,
-        secrets: secrets.returnSecrets
+        secrets: secrets.returnSecrets,
+        secretCount: secrets.secretCount
       };
     }
   });
@@ -264,7 +281,11 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          secrets: z.string()
+          mappingSecret: mappingSecretSchema.omit({
+            services: z.array(),
+            environment: z.string(),
+            secrets: z.array()
+          })
         })
       }
     },
@@ -280,7 +301,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
         secrets: req.body.secrets
       });
       await server.services.auditLog.createAuditLog({
-        projectId: req.query.projectId,
+        projectId: req.body.projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.CREATE_MAPPING_SECRET,
@@ -292,7 +313,7 @@ export const registerSecretMappingRouter = async (server: FastifyZodProvider) =>
         }
       });
       return {
-        mappingSecret
+        mappingSecret: mappingSecret.newMappingSecret
       };
     }
   });

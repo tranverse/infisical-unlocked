@@ -18,7 +18,7 @@ export type SearchModalProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   secrets: [];
-  canReadEnv: boolean;
+  canReadSecret: boolean;
 };
 
 const Content = ({
@@ -28,13 +28,15 @@ const Content = ({
   initialValue = "",
   isSingleEnv,
   secrets,
-  canReadEnv
+  canReadSecret
 }: Omit<SearchModalProps, "isOpen" | "onOpenChange">) => {
   const [search, setSearch] = useState(initialValue);
   const [debouncedSearch] = useDebounce(search);
+  console.log(canReadSecret);
 
-  // ❗Nếu không có quyền -> render modal trống nhưng vẫn có ô input
-  if (!canReadEnv) {
+  if (!canReadSecret) {
+    console.log(canReadSecret);
+
     return (
       <div className="min-h-[14.6rem]">
         <div className="flex gap-2">
@@ -66,7 +68,6 @@ const Content = ({
     );
   }
 
-  // Nếu có quyền -> lọc secrets
   const term = search.toLowerCase().trim();
   let filteredSecrets: any[] = [];
 

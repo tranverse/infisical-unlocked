@@ -281,7 +281,14 @@ export const useUpdateSecretBatch = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      console.log(
+        queryClient
+          .getQueryCache()
+          .findAll()
+          .map((q) => q.queryKey)
+      );
     },
+
     ...options
   });
 };

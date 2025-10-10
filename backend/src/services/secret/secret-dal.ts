@@ -10,7 +10,7 @@ export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
 
 export const secretDALFactory = (db: TDbClient) => {
   const secretOrm = ormify(db, TableName.Secret);
-
+  
   const update = async (filter: Partial<TSecrets>, data: Omit<TSecretsUpdate, "version">, tx?: Knex) => {
     try {
       const sec = await (tx || db)(TableName.Secret).where(filter).update(data).increment("version", 1).returning("*");

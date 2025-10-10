@@ -9,7 +9,7 @@ type ModalProps = {
   secrets: [];
   searchValue: string;
   projectId: string;
-  canReadEnv: boolean;
+  canReadSecret: boolean;
 };
 
 const SearchInput = ({
@@ -19,7 +19,7 @@ const SearchInput = ({
   secrets,
   searchValue,
   projectId,
-  canReadEnv
+  canReadSecret
 }: ModalProps) => {
   const [isOpenModal, setIsOpenModal] = useState(false);
 
@@ -52,7 +52,7 @@ const SearchInput = ({
           initialValue={searchValue}
           secrets={secrets}
           projectId={projectId}
-          canReadEnv={canReadEnv}
+          canReadSecret={canReadSecret}
         />
       )}
     </div>

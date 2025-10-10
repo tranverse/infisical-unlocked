@@ -17,7 +17,7 @@ import {
 
 const fetchMappingSecrets = async ({ projectId }: TGetMappingSecretDTO) => {
   const { data } = await apiRequest.get<TMappingSecretDTO>(`/api/v2/secret-mappings/${projectId}`);
-  return data.mappingSecrets;
+  return data;
 };
 
 const fetchSecretsAndMappingSecret = async ({
@@ -27,7 +27,7 @@ const fetchSecretsAndMappingSecret = async ({
   const { data } = await apiRequest.get<TMappingSecretDTO>(
     `/api/v2/secret-mappings/all-secrets/${mappingId}?projectId=${projectId}`
   );
-  return { mappingSecret: data.mappingSecrets, secrets: data.secrets };
+  return { mappingSecret: data.mappingSecrets, secrets: data.secrets, secretCount: data.secretCount };
 };
 
 export const mappingSecretKeys = {

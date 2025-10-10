@@ -7,6 +7,7 @@ export type TGetMappingSecretDTO = {
 export type TGetSecretsAndMappingSecretDTO = {
   projectId: string;
   mappingId: string;
+  environment: string;
 };
 
 export type TMappingSecret = {

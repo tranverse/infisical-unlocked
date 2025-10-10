@@ -89,7 +89,6 @@ export const SecretOverviewTableRow = ({
   const [isSecretVisible, setIsSecretVisible] = useToggle();
 
   const { permission } = useProjectPermission();
-  console.log(permission)
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
     importedSecret: { secret?: SecretV3RawSanitized } | undefined

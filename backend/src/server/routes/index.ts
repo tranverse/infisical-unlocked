@@ -619,7 +619,9 @@ export const registerRoutes = async (
     secretMappingDAL,
     kmsService,
     secretDAL: secretV2BridgeDAL,
-    permissionService
+    permissionService,
+    folderDAL,
+    projectEnvDAL
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
 
